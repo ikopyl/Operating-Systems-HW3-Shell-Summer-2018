@@ -37,10 +37,19 @@ int main(int* argc, char** argv)
 
     while ((bytes_read = read(0, buf, BUFFERSIZE)))
     {
-        bytes_written = write(1, buf, bytes_read);
+        printf("Bytes read: %lu\n", bytes_read);                 // DEBUG ONLY, DELETE BEFORE RELEASE
+        bytes_written = write(1, buf, (size_t) bytes_read);
+        printf("\nBytes written: %lu\n", bytes_written);           // DEBUG ONLY, DELETE BEFORE RELEASE
         check_for_errors(bytes_written, "Write error...");
+
+        // I'm not sure if I need this
+        free(buf);
+        buf = (char *) calloc(BUFFERSIZE, sizeof(char));
     }
     check_for_errors(bytes_read, "Read error...");
+
+    free(buf);
+    buf = NULL;
 
 
     return 0;
