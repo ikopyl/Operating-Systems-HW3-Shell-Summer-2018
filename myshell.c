@@ -24,13 +24,13 @@
 //sizeof shell prompt
 #define PROMPTSIZE sizeof(PROMPT)
 
-void verify_memory_allocation(size_t);
-void check_for_errors(ssize_t, char *);
+void verify_memory_allocation(const char *);
+void check_for_errors(ssize_t, const char *);
 
 int main(int* argc, char** argv)
 {
     char *buf = (char *) calloc(BUFFERSIZE, sizeof(char));
-    verify_memory_allocation((size_t) buf);
+    verify_memory_allocation(buf);
 
     ssize_t bytes_read = 0;
     ssize_t bytes_written = 0;
@@ -45,6 +45,7 @@ int main(int* argc, char** argv)
         // I'm not sure if I need this
         free(buf);
         buf = (char *) calloc(BUFFERSIZE, sizeof(char));
+        verify_memory_allocation(buf);
     }
     check_for_errors(bytes_read, "Read error...");
 
@@ -55,14 +56,14 @@ int main(int* argc, char** argv)
     return 0;
 }
 
-void check_for_errors(ssize_t status_code, char * error_message) {
+void check_for_errors(ssize_t status_code, const char * error_message) {
     if (status_code < 0) {
         perror(error_message);
         exit(errno);
     }
 }
 
-void verify_memory_allocation(size_t ptr)
+void verify_memory_allocation(const char * ptr)
 {
     if (!ptr) {     // i.e. if ptr <= 0
         perror("Unable to allocate dynamic memory...");
