@@ -27,7 +27,10 @@
 void repl();
 void display_prompt();
 void print_newline_character();
+
 ssize_t get_user_input(char *);
+
+void err_exit(const char *);
 void verify_memory_allocation(const char *);
 void check_for_errors(ssize_t, const char *);
 
@@ -81,22 +84,26 @@ void print_newline_character()
    check_for_errors(bytes_written, "Write error...");
 }
 
-ssize_t get_user_input(char * buf) {
+ssize_t get_user_input(char * buf)
+{
     return read(0, buf, BUFFERSIZE);
 }
 
-void check_for_errors(ssize_t status_code, const char * error_message) {
-    if (status_code < 0) {
-        perror(error_message);
-        exit(errno);
-    }
+void err_exit(const char * error_message)
+{
+   perror(error_message);
+   exit(errno);
+}
+
+void check_for_errors(ssize_t status_code, const char * error_message)
+{
+    if (status_code < 0)
+        err_exit(error_message);
 }
 
 void verify_memory_allocation(const char * ptr)
 {
-    if (!ptr) {     // i.e. if ptr <= 0
-        perror("Unable to allocate dynamic memory...");
-        exit(errno);
-    }
+    if (!ptr)   // i.e. if ptr <= 0
+        err_exit("Unable to allocate dynamic memory...");
 }
 
