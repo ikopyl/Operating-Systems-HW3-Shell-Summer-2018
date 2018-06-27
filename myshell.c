@@ -41,23 +41,35 @@ void repl()
     char *buf = (char *) calloc(BUFFERSIZE, sizeof(char));
     verify_memory_allocation(buf);
 
-    ssize_t bytes_read = 0;
-    ssize_t bytes_written = 0;
-
-    while ((bytes_read = get_user_input(buf)))
+    while (1)
     {
-        printf("Bytes read: %lu\n", bytes_read);                 // DEBUG ONLY, DELETE BEFORE RELEASE
-        bytes_written = write(1, buf, (size_t) bytes_read);
-        printf("\nBytes written: %lu\n", bytes_written);           // DEBUG ONLY, DELETE BEFORE RELEASE
-        check_for_errors(bytes_written, "Write error...");
 
-        // I'm not sure if I need this
-        free(buf);
-        buf = (char *) calloc(BUFFERSIZE, sizeof(char));
-        verify_memory_allocation(buf);
+        ssize_t bytes_read = 0;
+        ssize_t bytes_written = 0;
+
+        display_prompt();
+
+//    while ((bytes_read = get_user_input(buf)))
+        while ((bytes_read = read(0, buf, BUFFERSIZE))) {
+//            printf("Bytes read: %lu\n", bytes_read);                 // DEBUG ONLY, DELETE BEFORE RELEASE
+            bytes_written = write(1, buf, (size_t) bytes_read);
+//            printf("\nBytes written: %lu\n", bytes_written);           // DEBUG ONLY, DELETE BEFORE RELEASE
+//            puts("---------------------------------------");          // DEBUG ONLY, DELETE BEFORE RELEASE
+            check_for_errors(bytes_written, "Write error...");
+
+            // I'm not sure if I need this
+            free(buf);
+            buf = (char *) calloc(BUFFERSIZE, sizeof(char));
+            verify_memory_allocation(buf);
+
+            if (bytes_read < BUFFERSIZE)
+                break;
+        }
+        check_for_errors(bytes_read, "Read error...");
+
+        if (bytes_read == 0)
+            break;
     }
-    check_for_errors(bytes_read, "Read error...");
-
     free(buf);
     buf = NULL;
 }
