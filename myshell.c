@@ -68,10 +68,10 @@ void repl()
                 token = strtok(NULL, delimeter);
             }
 
-            // I'm not sure if I need this
-            free(buf);
-            buf = (char *) calloc(BUFFERSIZE, sizeof(char));
-            verify_memory_allocation(buf);
+//            // I'm not sure if I need this
+//            free(buf);
+//            buf = (char *) calloc(BUFFERSIZE, sizeof(char));
+//            verify_memory_allocation(buf);
 
             if (bytes_read < BUFFERSIZE)
                 break;
