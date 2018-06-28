@@ -27,6 +27,7 @@
 void repl();
 void display_prompt();
 void print_newline_character();
+void sanitize_input(char *);
 
 ssize_t get_user_input(char *);
 
@@ -52,7 +53,13 @@ void repl()
         display_prompt();
         while ((bytes_read = get_user_input(buf)))
         {
+            sanitize_input(buf);
+
+            if (strcmp(buf, "exit") == 0)
+                return;
+
             bytes_written = write(1, buf, (size_t) bytes_read);
+            print_newline_character();
             check_for_errors(bytes_written, "Write error...");
 
             // I'm not sure if I need this
@@ -70,6 +77,12 @@ void repl()
 
     free(buf);
     buf = NULL;
+}
+
+void sanitize_input(char * cmd)
+{
+    while (*cmd++ != '\n');
+    *(cmd - 1) = '\0';
 }
 
 void display_prompt()
