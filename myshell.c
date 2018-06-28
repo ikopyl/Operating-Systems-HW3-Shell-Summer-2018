@@ -23,6 +23,7 @@
 #define PROMPT "myShell >> "
 //sizeof shell prompt
 #define PROMPTSIZE sizeof(PROMPT)
+#define TERMINATION_CMD "exit"
 
 void repl();
 void display_prompt();
@@ -55,7 +56,7 @@ void repl()
         {
             delete_newline_char(buf);
 
-            if (strcmp(buf, "exit") == 0)
+            if (strcmp(buf, TERMINATION_CMD) == 0)
                 return;
 
             bytes_written = write(STDOUT_FILENO, buf, (size_t) bytes_read);
