@@ -44,11 +44,13 @@ int main(int* argc, char** argv)
 
 void repl()
 {
+    char * token;
+    char * delimeter = " \t";
+
     char *buf = (char *) calloc(BUFFERSIZE, sizeof(char));
     verify_memory_allocation(buf);
 
     ssize_t bytes_read = 0;
-    ssize_t bytes_written = 0;
 
     do {
         display_prompt();
@@ -59,9 +61,12 @@ void repl()
             if (strcmp(buf, TERMINATION_CMD) == 0)
                 return;
 
-            bytes_written = write(STDOUT_FILENO, buf, (size_t) bytes_read);
-            print_newline_char();
-            check_for_errors(bytes_written, "Write error...");
+            token = strtok(buf, delimeter);
+            while (token)
+            {
+                printf("%s\n", token);
+                token = strtok(NULL, delimeter);
+            }
 
             // I'm not sure if I need this
             free(buf);
