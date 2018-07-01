@@ -28,7 +28,7 @@
 void repl();
 void display_prompt();
 void print_newline_char();
-void delete_newline_char(char *);
+void strip(char *, char);
 
 ssize_t get_user_input(char *);
 
@@ -56,8 +56,7 @@ void repl()
         display_prompt();
         while ((bytes_read = get_user_input(buf)))
         {
-            delete_newline_char(buf);
-
+            strip(buf, '\n');
             if (strcmp(buf, TERMINATION_CMD) == 0)
                 return;
 
@@ -85,9 +84,9 @@ void repl()
     buf = NULL;
 }
 
-void delete_newline_char(char * cmd)
+void strip(char * cmd, char character)
 {
-    while (*cmd++ != '\n');
+    while (*cmd++ != character);
     *(cmd - 1) = '\0';
 }
 
