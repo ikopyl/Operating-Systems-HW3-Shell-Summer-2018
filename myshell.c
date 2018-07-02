@@ -77,9 +77,7 @@ int repl()
                     reallocate((char **) &myargv, (max_items_allowed *= 2));
 
                 myargv[myargc++] = token;
-
-//                printf("%s\n", token);
-                printf("\t\t%s\n", myargv[myargc - 1]);
+                printf("%s\n", myargv[myargc - 1]);
 
                 token = strtok(NULL, delimeter);
             }
@@ -106,12 +104,7 @@ int repl()
     return EXIT_SUCCESS;
 }
 
-/** My implementation is a bit verbose and boring,
- * but I tried to make the code safe: I should account
- * for a case when a character is not found,
- * thus I need to include a boundary check for an array.
- *
- * Return either the last position where the character was
+/** Return either the last position where the character was
  * stripped, or return 0 if match was not found in the array. */
 size_t strip(char * buf, const char character, const ssize_t bytes_read)
 {
