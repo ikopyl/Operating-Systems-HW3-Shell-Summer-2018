@@ -25,6 +25,8 @@
 #define PROMPTSIZE sizeof(PROMPT)
 #define TERMINATION_CMD "exit"
 
+#define ARGVMAX 32
+
 void repl();
 void display_prompt();
 void print_newline_char();
@@ -32,6 +34,7 @@ void strip(char *, char);
 
 ssize_t get_user_input(char *);
 
+void reallocate(char **, size_t);
 void err_exit(const char *);
 void verify_memory_allocation(const char *);
 void check_for_errors(ssize_t, const char *);
@@ -50,6 +53,10 @@ void repl()
     char *buf = (char *) calloc(BUFFERSIZE, sizeof(char));
     verify_memory_allocation(buf);
 
+    char ** myargv = calloc(ARGVMAX, sizeof(char *));       // allocate initially: 32 * size_t (pointer size)
+    size_t max_items_allowed = ARGVMAX;
+    size_t myargc = 0;
+
     ssize_t bytes_read = 0;
 
     do {
@@ -63,7 +70,17 @@ void repl()
             token = strtok(buf, delimeter);
             while (token)
             {
+                if (myargc - 1 >= max_items_allowed) {
+                    reallocate((char **) &myargv, (max_items_allowed *= 2));
+//                    max_items_allowed *= 2;
+//                    myargv = realloc(myargv, max_items_allowed * sizeof(char *));
+                }
+
+                myargv[myargc++] = token;
+
                 printf("%s\n", token);
+                printf("\t\t%s\n", myargv[myargc - 1]);
+
                 token = strtok(NULL, delimeter);
             }
 
@@ -88,6 +105,10 @@ void strip(char * cmd, char character)
 {
     while (*cmd++ != character);
     *(cmd - 1) = '\0';
+}
+
+void reallocate(char ** array, size_t number_of_items) {
+    *array = realloc(*array, number_of_items * sizeof(char *));
 }
 
 void display_prompt()
