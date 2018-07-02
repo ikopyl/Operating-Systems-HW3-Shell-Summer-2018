@@ -18,7 +18,9 @@
 #include <errno.h>
 
 //Max amount allowed to read from input
-#define BUFFERSIZE 256
+//#define BUFFERSIZE 256                  // RELEASE MODE
+//#define BUFFERSIZE 8                  // DEBUG MODE
+#define BUFFERSIZE 4                  // DEBUG MODE
 //Shell prompt
 #define PROMPT "myShell >> "
 //sizeof shell prompt
@@ -30,10 +32,12 @@
 void repl();
 void display_prompt();
 void print_newline_char();
-void strip(char *, char);
+
+size_t strip(char *, char, ssize_t);
 
 ssize_t get_user_input(char *);
 
+void callocate_myargv(char **, size_t *, size_t *);
 void reallocate(char **, size_t);
 void err_exit(const char *);
 void verify_memory_allocation(const char *);
@@ -53,9 +57,16 @@ void repl()
     char *buf = (char *) calloc(BUFFERSIZE, sizeof(char));
     verify_memory_allocation(buf);
 
-    char ** myargv = calloc(ARGVMAX, sizeof(char *));       // allocate initially: 32 * size_t (pointer size)
-    size_t max_items_allowed = ARGVMAX;
-    size_t myargc = 0;
+    char** myargv = NULL;
+    size_t myargc = NULL;
+    size_t max_items_allowed = NULL;
+    callocate_myargv((char **) &myargv, &myargc, &max_items_allowed);
+    // allocate initially: ARGVMAX * sizeof(char *)
+
+//    char ** myargv = calloc(ARGVMAX, sizeof(char *));       // allocate initially: 32 * size_t (pointer size)
+//    verify_memory_allocation(myargv);
+//    size_t max_items_allowed = ARGVMAX;
+//    size_t myargc = 0;
 
     ssize_t bytes_read = 0;
 
@@ -63,19 +74,23 @@ void repl()
         display_prompt();
         while ((bytes_read = get_user_input(buf)))
         {
-            strip(buf, '\n');
+            size_t eol = strip(buf, '\n', bytes_read);
             if (strcmp(buf, TERMINATION_CMD) == 0)
                 return;
 
             token = strtok(buf, delimeter);
             while (token)
             {
-                if (myargc - 1 >= max_items_allowed)
+                if (myargc - 1 >= max_items_allowed) {
                     reallocate((char **) &myargv, (max_items_allowed *= 2));
+//                    max_items_allowed *= 2;
+//                    myargv = realloc(myargv, max_items_allowed * sizeof(char *));
+
+                }
 
                 myargv[myargc++] = token;
 
-                printf("%s\n", token);
+//                printf("%s\n", token);
                 printf("\t\t%s\n", myargv[myargc - 1]);
 
                 token = strtok(NULL, delimeter);
@@ -86,13 +101,25 @@ void repl()
 //            buf = (char *) calloc(BUFFERSIZE, sizeof(char));
 //            verify_memory_allocation(buf);
 
-            if (bytes_read < BUFFERSIZE)
-                break;
+            if (bytes_read < BUFFERSIZE || eol)
+                break;          // console prompt will display again
         }
         check_for_errors(bytes_read, "Read error...");
+
+        free(buf);
+        buf = calloc(BUFFERSIZE, sizeof(char));
+        verify_memory_allocation(buf);
+
+        free(myargv);
+        callocate_myargv((char **) &myargv, &myargc, &max_items_allowed);
+//        myargv = calloc(ARGVMAX, sizeof(char *));
+//        verify_memory_allocation(myargv);
+//        max_items_allowed = ARGVMAX;
+//        myargc = 0;
+
     } while (bytes_read > 0);           // Terminated by EOF (Ctrl+D)
 
-    print_newline_char();
+//    print_newline_char();
 
     free(myargv);
     free(buf);
@@ -100,10 +127,40 @@ void repl()
     buf = NULL;
 }
 
-void strip(char * cmd, char character)
+/** My implementation is a bit verbose and boring,
+ * but I tried to make the code safe: I should account
+ * for a case when a character is not found,
+ * thus I need to include the boundary check for array.
+ *
+ * Return either the last position where the character was
+ * stripped, or return 0 if match was not found in the array. */
+size_t strip(char * buf, char character, ssize_t bytes_read)
 {
-    while (*cmd++ != character);
-    *(cmd - 1) = '\0';
+    size_t position = 0;
+    for (int i = 0; i < bytes_read; i++) {
+        if (buf[i] == character) {
+           buf[i] = '\0';
+           position = (size_t) i;
+        }
+    }
+    return position;
+
+
+    // it is not safe for my purposes:
+//    size_t position = 0;
+//    while (buf[position++] != character);
+//    buf[position - 1] = '\0';
+//    return position - 1;
+
+//    while (*cmd++ != character);
+//    *(cmd - 1) = '\0';
+}
+
+void callocate_myargv(char ** myargv, size_t * myargc, size_t * max_items_allowed) {
+    *myargv = calloc(ARGVMAX, sizeof(char *));
+    verify_memory_allocation(*myargv);
+    *max_items_allowed = ARGVMAX;
+    *myargc = 0;
 }
 
 void reallocate(char ** array, size_t number_of_items)
