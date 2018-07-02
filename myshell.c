@@ -18,16 +18,15 @@
 #include <errno.h>
 
 //Max amount allowed to read from input
-//#define BUFFERSIZE 256                  // RELEASE MODE
+#define BUFFERSIZE 256                  // RELEASE MODE
 //#define BUFFERSIZE 8                  // DEBUG MODE
-#define BUFFERSIZE 4                  // DEBUG MODE
-//Shell prompt
-#define PROMPT "myShell >> "
-//sizeof shell prompt
-#define PROMPTSIZE sizeof(PROMPT)
+//#define BUFFERSIZE 4                  // DEBUG MODE
+
+#define PROMPT "myShell >> "            // shell prompt
+#define PROMPTSIZE sizeof(PROMPT)       // sizeof shell prompt
 #define TERMINATION_CMD "exit"
 
-#define ARGVMAX 32
+#define ARGVMAX 32                      // initial number of tokens, but the value will double after each realloc()
 
 void repl();
 void display_prompt();
@@ -58,8 +57,8 @@ void repl()
     verify_memory_allocation(buf);
 
     char** myargv = NULL;
-    size_t myargc = NULL;
-    size_t max_items_allowed = NULL;
+    size_t myargc = 0;
+    size_t max_items_allowed = 0;
     callocate_myargv((char **) &myargv, &myargc, &max_items_allowed);
     // allocate initially: ARGVMAX * sizeof(char *)
 
