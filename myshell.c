@@ -28,9 +28,8 @@
 
 #define ARGVMAX 32                      // initial number of tokens, but the value will double after each realloc()
 
-void repl();
+int repl();
 void display_prompt();
-void print_newline_char();
 
 size_t strip(char *, char, ssize_t);
 
@@ -44,11 +43,10 @@ void check_for_errors(ssize_t, const char *);
 
 int main(int* argc, char** argv)
 {
-    repl();
-    return 0;
+    return repl();
 }
 
-void repl()
+int repl()
 {
     char * token;
     char * delimeter = " \t";
@@ -70,7 +68,7 @@ void repl()
         {
             size_t eol = strip(buf, '\n', bytes_read);
             if (strcmp(buf, TERMINATION_CMD) == 0)
-                return;
+                return EXIT_SUCCESS;
 
             token = strtok(buf, delimeter);
             while (token)
@@ -100,12 +98,12 @@ void repl()
 
     } while (bytes_read > 0);           // Terminated by EOF (Ctrl+D)
 
-//    print_newline_char();
-
     free(myargv);
     free(buf);
     myargv = NULL;
     buf = NULL;
+
+    return EXIT_SUCCESS;
 }
 
 /** My implementation is a bit verbose and boring,
@@ -143,12 +141,6 @@ void display_prompt()
 {
     ssize_t bytes_written = write(STDOUT_FILENO, PROMPT, PROMPTSIZE);
     check_for_errors(bytes_written, "Write error...");
-}
-
-void print_newline_char()
-{
-   ssize_t bytes_written = write(STDOUT_FILENO, "\n", 1);
-   check_for_errors(bytes_written, "Write error...");
 }
 
 ssize_t get_user_input(char * buf)
