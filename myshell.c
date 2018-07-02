@@ -70,11 +70,8 @@ void repl()
             token = strtok(buf, delimeter);
             while (token)
             {
-                if (myargc - 1 >= max_items_allowed) {
+                if (myargc - 1 >= max_items_allowed)
                     reallocate((char **) &myargv, (max_items_allowed *= 2));
-//                    max_items_allowed *= 2;
-//                    myargv = realloc(myargv, max_items_allowed * sizeof(char *));
-                }
 
                 myargv[myargc++] = token;
 
@@ -97,7 +94,9 @@ void repl()
 
     print_newline_char();
 
+    free(myargv);
     free(buf);
+    myargv = NULL;
     buf = NULL;
 }
 
@@ -107,7 +106,8 @@ void strip(char * cmd, char character)
     *(cmd - 1) = '\0';
 }
 
-void reallocate(char ** array, size_t number_of_items) {
+void reallocate(char ** array, size_t number_of_items)
+{
     *array = realloc(*array, number_of_items * sizeof(char *));
 }
 
