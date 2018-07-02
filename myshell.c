@@ -77,7 +77,7 @@ int repl()
                     reallocate((char **) &myargv, (max_items_allowed *= 2));
 
                 myargv[myargc++] = token;
-                printf("%s\n", myargv[myargc - 1]);
+                printf("%6zu:\t%s\n", myargc - 1, myargv[myargc - 1]);                      // DEBUG INFO
 
                 token = strtok(NULL, delimeter);
             }
@@ -86,6 +86,15 @@ int repl()
                 break;          // clear the buffer & display console prompt again
         }
         check_for_errors(bytes_read, "Read error...");
+
+        printf("Current value of myargc: %zu\n", myargc);                                   // DEBUG INFO
+        myargv[myargc] = '\0';
+
+        /** next 4 lines - DEBUG INFO */
+        size_t position = 0;
+        while (myargv[position]) {
+            printf("%s\n", myargv[position++]);
+        }
 
         free(buf);
         buf = calloc(BUFFERSIZE, sizeof(char));
