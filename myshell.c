@@ -63,11 +63,6 @@ void repl()
     callocate_myargv((char **) &myargv, &myargc, &max_items_allowed);
     // allocate initially: ARGVMAX * sizeof(char *)
 
-//    char ** myargv = calloc(ARGVMAX, sizeof(char *));       // allocate initially: 32 * size_t (pointer size)
-//    verify_memory_allocation(myargv);
-//    size_t max_items_allowed = ARGVMAX;
-//    size_t myargc = 0;
-
     ssize_t bytes_read = 0;
 
     do {
@@ -81,12 +76,8 @@ void repl()
             token = strtok(buf, delimeter);
             while (token)
             {
-                if (myargc - 1 >= max_items_allowed) {
+                if (myargc - 1 >= max_items_allowed)
                     reallocate((char **) &myargv, (max_items_allowed *= 2));
-//                    max_items_allowed *= 2;
-//                    myargv = realloc(myargv, max_items_allowed * sizeof(char *));
-
-                }
 
                 myargv[myargc++] = token;
 
@@ -96,13 +87,8 @@ void repl()
                 token = strtok(NULL, delimeter);
             }
 
-//            // I'm not sure if I need this
-//            free(buf);
-//            buf = (char *) calloc(BUFFERSIZE, sizeof(char));
-//            verify_memory_allocation(buf);
-
             if (bytes_read < BUFFERSIZE || eol)
-                break;          // console prompt will display again
+                break;          // clear the buffer & display console prompt again
         }
         check_for_errors(bytes_read, "Read error...");
 
@@ -112,10 +98,6 @@ void repl()
 
         free(myargv);
         callocate_myargv((char **) &myargv, &myargc, &max_items_allowed);
-//        myargv = calloc(ARGVMAX, sizeof(char *));
-//        verify_memory_allocation(myargv);
-//        max_items_allowed = ARGVMAX;
-//        myargc = 0;
 
     } while (bytes_read > 0);           // Terminated by EOF (Ctrl+D)
 
@@ -130,11 +112,11 @@ void repl()
 /** My implementation is a bit verbose and boring,
  * but I tried to make the code safe: I should account
  * for a case when a character is not found,
- * thus I need to include the boundary check for array.
+ * thus I need to include a boundary check for an array.
  *
  * Return either the last position where the character was
  * stripped, or return 0 if match was not found in the array. */
-size_t strip(char * buf, char character, ssize_t bytes_read)
+size_t strip(char * buf, const char character, const ssize_t bytes_read)
 {
     size_t position = 0;
     for (int i = 0; i < bytes_read; i++) {
@@ -144,16 +126,6 @@ size_t strip(char * buf, char character, ssize_t bytes_read)
         }
     }
     return position;
-
-
-    // it is not safe for my purposes:
-//    size_t position = 0;
-//    while (buf[position++] != character);
-//    buf[position - 1] = '\0';
-//    return position - 1;
-
-//    while (*cmd++ != character);
-//    *(cmd - 1) = '\0';
 }
 
 void callocate_myargv(char ** myargv, size_t * myargc, size_t * max_items_allowed) {
