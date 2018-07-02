@@ -27,6 +27,7 @@
 #define TERMINATION_CMD "exit"
 
 #define ARGVMAX 32                      // initial number of tokens, but the value will double after each realloc()
+static size_t MAX_ITEMS_ALLOWED;
 
 int repl();
 void display_prompt();
@@ -35,7 +36,8 @@ size_t strip(char *, char, ssize_t);
 
 ssize_t get_user_input(char *);
 
-void callocate_myargv(char **, size_t *, size_t *);
+//void callocate_myargv(char **, size_t *, size_t *);
+void callocate_myargv(char **, size_t *);
 void reallocate(char **, size_t);
 void err_exit(const char *);
 void verify_memory_allocation(const char *);
@@ -57,7 +59,8 @@ int repl()
     char** myargv = NULL;
     size_t myargc = 0;
     size_t max_items_allowed = 0;
-    callocate_myargv((char **) &myargv, &myargc, &max_items_allowed);
+//    callocate_myargv((char **) &myargv, &myargc, &max_items_allowed);
+    callocate_myargv((char **) &myargv, &myargc);
     // allocate initially: ARGVMAX * sizeof(char *)
 
     ssize_t bytes_read = 0;
@@ -73,11 +76,13 @@ int repl()
             token = strtok(buf, delimeter);
             while (token)
             {
-                if (myargc - 1 >= max_items_allowed)
-                    reallocate((char **) &myargv, (max_items_allowed *= 2));
+                if (myargc - 1 >= MAX_ITEMS_ALLOWED)
+//                if (myargc - 1 >= max_items_allowed)
+                    reallocate((char **) &myargv, (MAX_ITEMS_ALLOWED *= 2));
+//                    reallocate((char **) &myargv, (max_items_allowed *= 2));
 
                 myargv[myargc++] = token;
-                printf("%6zu:\t%s\n", myargc - 1, myargv[myargc - 1]);                      // DEBUG INFO
+//                printf("%6zu:\t%s\n", myargc - 1, myargv[myargc - 1]);                      // DEBUG INFO
 
                 token = strtok(NULL, delimeter);
             }
@@ -101,7 +106,8 @@ int repl()
         verify_memory_allocation(buf);
 
         free(myargv);
-        callocate_myargv((char **) &myargv, &myargc, &max_items_allowed);
+//        callocate_myargv((char **) &myargv, &myargc, &max_items_allowed);
+        callocate_myargv((char **) &myargv, &myargc);
 
     } while (bytes_read > 0);           // Terminated by EOF (Ctrl+D)
 
@@ -127,10 +133,12 @@ size_t strip(char * buf, const char character, const ssize_t bytes_read)
     return position;
 }
 
-void callocate_myargv(char ** myargv, size_t * myargc, size_t * max_items_allowed) {
+void callocate_myargv(char ** myargv, size_t * myargc) {
+//void callocate_myargv(char ** myargv, size_t * myargc, size_t * max_items_allowed) {
     *myargv = calloc(ARGVMAX, sizeof(char *));
     verify_memory_allocation(*myargv);
-    *max_items_allowed = ARGVMAX;
+    MAX_ITEMS_ALLOWED = ARGVMAX;
+//    *max_items_allowed = ARGVMAX;
     *myargc = 0;
 }
 
