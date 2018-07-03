@@ -36,8 +36,11 @@ size_t strip(char *, char, ssize_t);
 
 ssize_t get_user_input(char *);
 
+size_t tokenize_input(char *, char *, char **, size_t);
+
 void callocate_myargv(char **, size_t *);
 void reallocate(char **, size_t);
+
 void err_exit(const char *);
 void verify_memory_allocation(const char *);
 void check_for_errors(ssize_t, const char *);
@@ -49,7 +52,7 @@ int main(int* argc, char** argv)
 
 int repl()
 {
-    char * token;
+//    char * token;
     char * delimiter = " \t";
 
     char *buf = (char *) calloc(BUFFERSIZE, sizeof(char));
@@ -69,15 +72,17 @@ int repl()
             if (strcmp(buf, TERMINATION_CMD) == 0)
                 return EXIT_SUCCESS;
 
-            token = strtok(buf, delimiter);
-            while (token)
-            {
-                if (myargc - 1 >= MAX_ITEMS_ALLOWED)
-                    reallocate((char **) &myargv, (MAX_ITEMS_ALLOWED *= 2));
+            myargc = tokenize_input(buf, delimiter, myargv, myargc);
 
-                myargv[myargc++] = token;
-                token = strtok(NULL, delimiter);
-            }
+//            token = strtok(buf, delimiter);
+//            while (token)
+//            {
+//                if (myargc - 1 >= MAX_ITEMS_ALLOWED)
+//                    reallocate((char **) &myargv, (MAX_ITEMS_ALLOWED *= 2));
+//
+//                myargv[myargc++] = token;
+//                token = strtok(NULL, delimiter);
+//            }
 
             if (bytes_read < BUFFERSIZE || eol)
                 break;          // clear the buffer & display console prompt again
@@ -108,6 +113,22 @@ int repl()
     buf = NULL;
 
     return EXIT_SUCCESS;
+}
+
+size_t tokenize_input(char * buf, char * delimiter, char ** myargv, size_t myargc)
+{
+    char * token = strtok(buf, delimiter);
+    while (token) {
+
+        if (myargc - 1 >= MAX_ITEMS_ALLOWED)
+            reallocate(myargv, (MAX_ITEMS_ALLOWED *= 2));
+
+        myargv[myargc++] = token;
+
+        printf("\t\t\t%s\n", token);
+        token = strtok(NULL, delimiter);
+    }
+    return myargc;
 }
 
 /** Return either the last position where the character was
