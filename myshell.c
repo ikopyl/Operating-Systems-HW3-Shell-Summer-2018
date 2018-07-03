@@ -54,16 +54,23 @@ int repl()
 {
     char * delimiter = " \t";
 
-    char *buf = (char *) calloc(BUFFERSIZE, sizeof(char));
-    verify_memory_allocation(buf);
+    char * buf = NULL;
+//    char *buf = (char *) calloc(BUFFERSIZE, sizeof(char));
+//    verify_memory_allocation(buf);
 
     char** myargv = NULL;
     size_t myargc = 0;
-    callocate_myargv((char **) &myargv, &myargc);
+//    callocate_myargv((char **) &myargv, &myargc);
 
     ssize_t bytes_read = 0;
 
     do {
+        buf = calloc(BUFFERSIZE, sizeof(char));
+        verify_memory_allocation(buf);
+
+        callocate_myargv((char **) &myargv, &myargc);
+
+
         display_prompt();
         while ((bytes_read = get_user_input(buf)))
         {
@@ -89,18 +96,16 @@ int repl()
         }
 
         free(buf);
-        buf = calloc(BUFFERSIZE, sizeof(char));
-        verify_memory_allocation(buf);
-
         free(myargv);
-        callocate_myargv((char **) &myargv, &myargc);
+        myargv = NULL;
+        buf = NULL;
 
     } while (bytes_read > 0);           // Terminated by EOF (Ctrl+D)
 
-    free(myargv);
-    free(buf);
-    myargv = NULL;
-    buf = NULL;
+//    free(myargv);
+//    free(buf);
+//    myargv = NULL;
+//    buf = NULL;
 
     return EXIT_SUCCESS;
 }
