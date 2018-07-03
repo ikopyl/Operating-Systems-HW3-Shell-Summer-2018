@@ -52,7 +52,6 @@ int main(int* argc, char** argv)
 
 int repl()
 {
-//    char * token;
     char * delimiter = " \t";
 
     char *buf = (char *) calloc(BUFFERSIZE, sizeof(char));
@@ -74,22 +73,13 @@ int repl()
 
             myargc = tokenize_input(buf, delimiter, myargv, myargc);
 
-//            token = strtok(buf, delimiter);
-//            while (token)
-//            {
-//                if (myargc - 1 >= MAX_ITEMS_ALLOWED)
-//                    reallocate((char **) &myargv, (MAX_ITEMS_ALLOWED *= 2));
-//
-//                myargv[myargc++] = token;
-//                token = strtok(NULL, delimiter);
-//            }
-
             if (bytes_read < BUFFERSIZE || eol)
-                break;          // clear the buffer & display console prompt again
+                break;          // clear buf & display console prompt again
         }
         check_for_errors(bytes_read, "Read error...");
 
         printf("Current value of myargc: %zu\n", myargc);                                   // DEBUG INFO
+
         myargv[myargc] = '\0';
 
         /** next 4 lines - DEBUG INFO */
@@ -124,8 +114,6 @@ size_t tokenize_input(char * buf, char * delimiter, char ** myargv, size_t myarg
             reallocate(myargv, (MAX_ITEMS_ALLOWED *= 2));
 
         myargv[myargc++] = token;
-
-        printf("\t\t\t%s\n", token);
         token = strtok(NULL, delimiter);
     }
     return myargc;
