@@ -50,14 +50,13 @@ int main(int* argc, char** argv)
 int repl()
 {
     char * token;
-    char * delimeter = " \t";
+    char * delimiter = " \t";
 
     char *buf = (char *) calloc(BUFFERSIZE, sizeof(char));
     verify_memory_allocation(buf);
 
     char** myargv = NULL;
     size_t myargc = 0;
-    size_t max_items_allowed = 0;
     callocate_myargv((char **) &myargv, &myargc);
 
     ssize_t bytes_read = 0;
@@ -70,14 +69,14 @@ int repl()
             if (strcmp(buf, TERMINATION_CMD) == 0)
                 return EXIT_SUCCESS;
 
-            token = strtok(buf, delimeter);
+            token = strtok(buf, delimiter);
             while (token)
             {
                 if (myargc - 1 >= MAX_ITEMS_ALLOWED)
                     reallocate((char **) &myargv, (MAX_ITEMS_ALLOWED *= 2));
 
                 myargv[myargc++] = token;
-                token = strtok(NULL, delimeter);
+                token = strtok(NULL, delimiter);
             }
 
             if (bytes_read < BUFFERSIZE || eol)
