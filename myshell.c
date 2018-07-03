@@ -18,9 +18,7 @@
 #include <errno.h>
 
 //Max amount allowed to read from input
-#define BUFFERSIZE 256                  // RELEASE MODE
-//#define BUFFERSIZE 8                  // DEBUG MODE
-//#define BUFFERSIZE 4                  // DEBUG MODE
+#define BUFFERSIZE 256
 
 #define PROMPT "myShell >> "            // shell prompt
 #define PROMPTSIZE sizeof(PROMPT)       // sizeof shell prompt
@@ -33,9 +31,7 @@ int repl();
 void display_prompt();
 
 size_t strip(char *, char, ssize_t);
-
 ssize_t get_user_input(char *);
-
 size_t tokenize_input(char *, char *, char **, size_t);
 
 void callocate_myargv(char **, size_t *);
@@ -55,13 +51,8 @@ int repl()
     char * delimiter = " \t";
 
     char * buf = NULL;
-//    char *buf = (char *) calloc(BUFFERSIZE, sizeof(char));
-//    verify_memory_allocation(buf);
-
     char** myargv = NULL;
     size_t myargc = 0;
-//    callocate_myargv((char **) &myargv, &myargc);
-
     ssize_t bytes_read = 0;
 
     do {
@@ -69,7 +60,6 @@ int repl()
         verify_memory_allocation(buf);
 
         callocate_myargv((char **) &myargv, &myargc);
-
 
         display_prompt();
         while ((bytes_read = get_user_input(buf)))
@@ -85,15 +75,14 @@ int repl()
         }
         check_for_errors(bytes_read, "Read error...");
 
-        printf("Current value of myargc: %zu\n", myargc);                                   // DEBUG INFO
-
+//        printf("Current value of myargc: %zu\n", myargc);                    // DEBUG INFO
         myargv[myargc] = '\0';
 
         /** next 4 lines - DEBUG INFO */
-        size_t position = 0;
-        while (myargv[position]) {
-            printf("%s\n", myargv[position++]);
-        }
+//        size_t position = 0;
+//        while (myargv[position]) {
+//            printf("%s\n", myargv[position++]);
+//        }
 
         free(buf);
         free(myargv);
@@ -101,11 +90,6 @@ int repl()
         buf = NULL;
 
     } while (bytes_read > 0);           // Terminated by EOF (Ctrl+D)
-
-//    free(myargv);
-//    free(buf);
-//    myargv = NULL;
-//    buf = NULL;
 
     return EXIT_SUCCESS;
 }
