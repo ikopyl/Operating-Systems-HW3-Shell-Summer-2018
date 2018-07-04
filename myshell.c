@@ -22,9 +22,14 @@
 #define BUFFERSIZE 256
 #define PATH_MAX 4096
 
-#define HOME "~"
-#define LINK_TO_PREVIOUS_WORKING_DIRECTORY "-"
-#define HOMESIZE sizeof(HOME)
+#define HOME_SHORTCUT "~"
+#define OLDPWD_SHORTCUT "-"
+
+#define HOMESIZE sizeof(HOME_SHORTCUT)
+
+#define ENV_VAR_CHAR_RECOGNIZER '$'
+#define ENV_VAR_HOME "HOME"
+#define ENV_VAR_OLDPWD "OLDPWD"
 
 #define PROMPT "myShell >> "            // shell prompt
 #define PROMPTSIZE sizeof(PROMPT)       // sizeof shell prompt
@@ -103,12 +108,12 @@ int repl()
 
             char * path = 0;
 
-            if (strcmp(myargv[1], HOME) == 0)
-                path = getenv("HOME");
-            else if (myargv[1][0] == '$')
+            if (strcmp(myargv[1], HOME_SHORTCUT) == 0)
+                path = getenv(ENV_VAR_HOME);
+            else if (myargv[1][0] == ENV_VAR_CHAR_RECOGNIZER)
                 path = getenv((const char *) myargv[1] + 1);            // excluding $ character
-            else if (strcmp(myargv[1], LINK_TO_PREVIOUS_WORKING_DIRECTORY) == 0)
-                path = getenv("OLDPWD");
+            else if (strcmp(myargv[1], OLDPWD_SHORTCUT) == 0)
+                path = getenv(ENV_VAR_OLDPWD);
             else
                 path = myargv[1];
 
@@ -116,7 +121,7 @@ int repl()
             check_for_errors_gracefully(status, myargv[1]);
 
             if (status >= 0) {
-                status = setenv("OLDPWD", CURRENT_WORKING_DIRECTORY, 1);
+                status = setenv(ENV_VAR_OLDPWD, CURRENT_WORKING_DIRECTORY, 1);
                 check_for_errors_gracefully(status, myargv[1]);
             }
 
@@ -125,7 +130,6 @@ int repl()
 
 
         if (strcmp(myargv[0], BUILTIN_PWD) == 0) {
-
             CURRENT_WORKING_DIRECTORY = getcwd(CURRENT_WORKING_DIRECTORY, PATH_MAX);
             ssize_t bytes_written = printf("%s\n", CURRENT_WORKING_DIRECTORY);
             check_for_errors_gracefully(bytes_written, "Write error...");
