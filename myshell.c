@@ -20,13 +20,22 @@
 
 //Max amount allowed to read from input
 #define BUFFERSIZE 256
+#define PATH_MAX 4096
+
+#define HOME "~"
+#define LINK_TO_PREVIOUS_WORKING_DIRECTORY "-"
+#define HOMESIZE sizeof(HOME)
 
 #define PROMPT "myShell >> "            // shell prompt
 #define PROMPTSIZE sizeof(PROMPT)       // sizeof shell prompt
-#define TERMINATION_CMD "exit"
+#define BUILTIN_EXIT "exit"
+#define BUILTIN_CD "cd"
+#define BUILTIN_PWD "pwd"
 
 #define ARGVMAX 32                      // initial number of tokens, but the value will double after each realloc()
 static size_t MAX_ITEMS_ALLOWED;
+static char * CURRENT_WORKING_DIRECTORY;
+static char * PREVIOUS_WORKING_DIRECTORY;
 
 int repl();
 void display_prompt();
@@ -41,6 +50,8 @@ void reallocate(char **, size_t);
 void err_exit(const char *);
 void verify_memory_allocation(const char *);
 void check_for_errors(ssize_t, const char *);
+
+void execute_builtin(void (*fptr_builtin)(char *), char *);
 
 int main(int* argc, char** argv)
 {
@@ -66,7 +77,7 @@ int repl()
         while ((bytes_read = get_user_input(buf)))
         {
             size_t eol = strip(buf, '\n', bytes_read);
-            if (strcmp(buf, TERMINATION_CMD) == 0)
+            if (strcmp(buf, BUILTIN_EXIT) == 0)
                 return EXIT_SUCCESS;
 
             myargc = tokenize_input(buf, delimiter, myargv, myargc);
@@ -78,6 +89,50 @@ int repl()
 
 //        printf("Current value of myargc: %zu\n", myargc);                    // DEBUG INFO
         myargv[myargc] = '\0';
+
+
+
+        // builtins start here:
+
+
+        if (strcmp(myargv[0], BUILTIN_CD) == 0) {
+
+            CURRENT_WORKING_DIRECTORY = getcwd(CURRENT_WORKING_DIRECTORY, PATH_MAX);
+
+            int status = 0;
+            if (strcmp(myargv[1], HOME) == 0) {
+                char * home = getenv("HOME");
+                status = chdir(home);
+            } else if (strcmp(myargv[1], LINK_TO_PREVIOUS_WORKING_DIRECTORY) == 0) {
+                chdir(getenv("OLDPWD"));
+            } else {
+                status = chdir(myargv[1]);
+            }
+
+            if (status < 0) {
+                perror(myargv[1]);
+            } else {
+                status = setenv("OLDPWD", CURRENT_WORKING_DIRECTORY, 1);
+                if (status < 0)
+                    perror(myargv[1]);
+            }
+
+            continue;
+        }
+        
+
+        if (strcmp(myargv[0], BUILTIN_PWD) == 0) {
+
+            CURRENT_WORKING_DIRECTORY = getcwd(CURRENT_WORKING_DIRECTORY, PATH_MAX);
+            ssize_t bytes_written = printf("%s\n", CURRENT_WORKING_DIRECTORY);
+            if (bytes_written < 0)
+                perror("Unable to write to STDOUT...");
+            continue;
+        }
+
+
+
+
 
         /** next 4 lines - DEBUG INFO */
 //        size_t position = 0;
@@ -92,7 +147,7 @@ int repl()
 
         if (pid == 0) {
             execvp(myargv[0], myargv);
-            err_exit("Failed to execute a new process...");
+            err_exit(myargv[1]);
         } else {
             wait(&status);
 //            waitpid(pid, &status, WNOHANG);             // should I use it for & use-case?
@@ -108,6 +163,11 @@ int repl()
     } while (bytes_read > 0);           // Terminated by EOF (Ctrl+D)
 
     return EXIT_SUCCESS;
+}
+
+void execute_builtin(void (*fptr_builtin)(char *), char * argsv)
+{
+    (*fptr_builtin)(argsv);
 }
 
 size_t tokenize_input(char * buf, char * delimiter, char ** myargv, size_t myargc)
