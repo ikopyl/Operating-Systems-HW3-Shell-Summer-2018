@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <fcntl.h>
 #include <errno.h>
 
@@ -83,6 +84,21 @@ int repl()
 //        while (myargv[position]) {
 //            printf("%s\n", myargv[position++]);
 //        }
+
+        // processes start here:
+
+        int status = 0;
+        pid_t pid = fork();
+        check_for_errors(pid, "Fork failed...");
+
+        if (pid == 0) {
+            execvp(myargv[0], myargv);
+        } else {
+            wait(&status);
+//            waitpid(pid, &status, WNOHANG);
+        }
+
+        
 
         free(buf);
         free(myargv);
