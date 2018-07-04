@@ -56,7 +56,8 @@ void verify_memory_allocation(const char *);
 void check_for_errors_and_terminate(ssize_t, const char *);
 void check_for_errors_gracefully(ssize_t, const char *);
 
-void execute_builtin(void (*fptr_builtin)(char *), char *);
+void builtin_cd(char **);
+void builtin_pwd();
 
 int main(int* argc, char** argv)
 {
@@ -84,8 +85,6 @@ int repl()
         while ((bytes_read = get_user_input(buf)))
         {
             size_t eol = strip(buf, '\n', bytes_read);
-            if (strcmp(buf, BUILTIN_EXIT) == 0)
-                return EXIT_SUCCESS;
 
             myargc = tokenize_input(buf, delimiter, myargv, myargc);
 
@@ -94,51 +93,22 @@ int repl()
         }
         check_for_errors_and_terminate(bytes_read, "Read error...");
 
-//        printf("Current value of myargc: %zu\n", myargc);                    // DEBUG INFO
         myargv[myargc] = '\0';
 
 
-
         // builtins start here:
-
+        if (myargc == 1 && strcmp(myargv[0], BUILTIN_EXIT) == 0)
+            return EXIT_SUCCESS;
 
         if (strcmp(myargv[0], BUILTIN_CD) == 0) {
-
-            CURRENT_WORKING_DIRECTORY = getcwd(CURRENT_WORKING_DIRECTORY, PATH_MAX);
-
-            char * path = 0;
-
-            if (strcmp(myargv[1], HOME_SHORTCUT) == 0)
-                path = getenv(ENV_VAR_HOME);
-            else if (myargv[1][0] == ENV_VAR_CHAR_RECOGNIZER)
-                path = getenv((const char *) myargv[1] + 1);            // excluding $ character
-            else if (strcmp(myargv[1], OLDPWD_SHORTCUT) == 0)
-                path = getenv(ENV_VAR_OLDPWD);
-            else
-                path = myargv[1];
-
-            ssize_t status = chdir(path);
-            check_for_errors_gracefully(status, myargv[1]);
-
-            if (status >= 0) {
-                status = setenv(ENV_VAR_OLDPWD, CURRENT_WORKING_DIRECTORY, 1);
-                check_for_errors_gracefully(status, myargv[1]);
-            }
-
+            builtin_cd(myargv);
             continue;
         }
-
 
         if (strcmp(myargv[0], BUILTIN_PWD) == 0) {
-            CURRENT_WORKING_DIRECTORY = getcwd(CURRENT_WORKING_DIRECTORY, PATH_MAX);
-            ssize_t bytes_written = printf("%s\n", CURRENT_WORKING_DIRECTORY);
-            check_for_errors_gracefully(bytes_written, "Write error...");
+            builtin_pwd();
             continue;
         }
-
-
-
-
 
         /** next 4 lines - DEBUG INFO */
 //        size_t position = 0;
@@ -146,14 +116,15 @@ int repl()
 //            printf("%s\n", myargv[position++]);
 //        }
 
+
         // processes start here:
         int status = 0;
         pid_t pid = fork();
-        check_for_errors_and_terminate(pid, "Failed to fork the existing process...");
+        check_for_errors_gracefully(pid, "Fork failed...");
 
         if (pid == 0) {
-            execvp(myargv[0], myargv);
-            err_exit(myargv[1]);
+            status = execvp(myargv[0], myargv);
+            err_exit(myargv[0]);
         } else {
             wait(&status);
 //            waitpid(pid, &status, WNOHANG);             // should I use it for & use-case?
@@ -171,9 +142,35 @@ int repl()
     return EXIT_SUCCESS;
 }
 
-void execute_builtin(void (*fptr_builtin)(char *), char * argsv)
+
+void builtin_cd(char ** myargv)
 {
-    (*fptr_builtin)(argsv);
+    CURRENT_WORKING_DIRECTORY = getcwd(CURRENT_WORKING_DIRECTORY, PATH_MAX);
+    char * path = 0;
+
+    if (strcmp(myargv[1], HOME_SHORTCUT) == 0)
+        path = getenv(ENV_VAR_HOME);
+    else if (strcmp(myargv[1], OLDPWD_SHORTCUT) == 0)
+        path = getenv(ENV_VAR_OLDPWD);
+    else if (myargv[1][0] == ENV_VAR_CHAR_RECOGNIZER)
+        path = getenv((const char *) myargv[1] + 1);            // excluding $ character
+    else
+        path = myargv[1];
+
+    ssize_t status = chdir(path);
+    check_for_errors_gracefully(status, myargv[1]);
+
+    if (status >= 0) {
+        status = setenv(ENV_VAR_OLDPWD, CURRENT_WORKING_DIRECTORY, 1);
+        check_for_errors_gracefully(status, myargv[1]);
+    }
+}
+
+void builtin_pwd()
+{
+    CURRENT_WORKING_DIRECTORY = getcwd(CURRENT_WORKING_DIRECTORY, PATH_MAX);
+    ssize_t bytes_written = printf("%s\n", CURRENT_WORKING_DIRECTORY);
+    check_for_errors_gracefully(bytes_written, "Write error...");
 }
 
 size_t tokenize_input(char * buf, char * delimiter, char ** myargv, size_t myargc)
