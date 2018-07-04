@@ -86,19 +86,19 @@ int repl()
 //        }
 
         // processes start here:
-
         int status = 0;
         pid_t pid = fork();
-        check_for_errors(pid, "Fork failed...");
+        check_for_errors(pid, "Failed to fork the existing process...");
 
         if (pid == 0) {
             execvp(myargv[0], myargv);
+            err_exit("Failed to execute a new process...");
         } else {
             wait(&status);
-//            waitpid(pid, &status, WNOHANG);
+//            waitpid(pid, &status, WNOHANG);             // should I use it for & use-case?
         }
 
-        
+
 
         free(buf);
         free(myargv);
@@ -164,7 +164,7 @@ ssize_t get_user_input(char * buf)
 void err_exit(const char * error_message)
 {
    perror(error_message);
-   exit(errno);
+   exit(EXIT_FAILURE);
 }
 
 void check_for_errors(ssize_t status_code, const char * error_message)
