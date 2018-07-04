@@ -101,27 +101,21 @@ int repl()
 
             CURRENT_WORKING_DIRECTORY = getcwd(CURRENT_WORKING_DIRECTORY, PATH_MAX);
 
-            int status = 0;
             char * path = 0;
 
-            if (strcmp(myargv[1], HOME) == 0) {
-//                char * home = getenv("HOME");
+            if (strcmp(myargv[1], HOME) == 0)
                 path = getenv("HOME");
-                status = chdir(path);
-            } else if (myargv[1][0] == '$') {
-//                char * expanded_path = getenv(myargv[1]);
-                path = getenv((const char *) myargv[1][1]);         // excluding $
-                status = chdir(path);
-            } else if (strcmp(myargv[1], LINK_TO_PREVIOUS_WORKING_DIRECTORY) == 0) {
+            else if (myargv[1][0] == '$')
+                path = getenv((const char *) myargv[1] + 1);            // excluding $ character
+            else if (strcmp(myargv[1], LINK_TO_PREVIOUS_WORKING_DIRECTORY) == 0)
                 path = getenv("OLDPWD");
-                chdir(getenv(path));
-            } else {
+            else
                 path = myargv[1];
-                status = chdir(path);
-            }
+
+            ssize_t status = chdir(path);
             check_for_errors_gracefully(status, myargv[1]);
 
-            if (status) {
+            if (status >= 0) {
                 status = setenv("OLDPWD", CURRENT_WORKING_DIRECTORY, 1);
                 check_for_errors_gracefully(status, myargv[1]);
             }
