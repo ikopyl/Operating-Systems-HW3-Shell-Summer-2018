@@ -35,7 +35,6 @@
 #define ARGVMAX 32                      // initial number of tokens, but the value will double after each realloc()
 static size_t MAX_ITEMS_ALLOWED;
 static char * CURRENT_WORKING_DIRECTORY;
-static char * PREVIOUS_WORKING_DIRECTORY;
 
 int repl();
 void display_prompt();
@@ -49,7 +48,8 @@ void reallocate(char **, size_t);
 
 void err_exit(const char *);
 void verify_memory_allocation(const char *);
-void check_for_errors(ssize_t, const char *);
+void check_for_errors_and_terminate(ssize_t, const char *);
+void check_for_errors_gracefully(ssize_t, const char *);
 
 void execute_builtin(void (*fptr_builtin)(char *), char *);
 
@@ -60,6 +60,8 @@ int main(int* argc, char** argv)
 
 int repl()
 {
+    CURRENT_WORKING_DIRECTORY = NULL;
+
     char * delimiter = " \t";
 
     char * buf = NULL;
@@ -85,7 +87,7 @@ int repl()
             if (bytes_read < BUFFERSIZE || eol)
                 break;          // clear buf & display console prompt again
         }
-        check_for_errors(bytes_read, "Read error...");
+        check_for_errors_and_terminate(bytes_read, "Read error...");
 
 //        printf("Current value of myargc: %zu\n", myargc);                    // DEBUG INFO
         myargv[myargc] = '\0';
@@ -100,33 +102,39 @@ int repl()
             CURRENT_WORKING_DIRECTORY = getcwd(CURRENT_WORKING_DIRECTORY, PATH_MAX);
 
             int status = 0;
-            if (strcmp(myargv[1], HOME) == 0) {
-                char * home = getenv("HOME");
-                status = chdir(home);
-            } else if (strcmp(myargv[1], LINK_TO_PREVIOUS_WORKING_DIRECTORY) == 0) {
-                chdir(getenv("OLDPWD"));
-            } else {
-                status = chdir(myargv[1]);
-            }
+            char * path = 0;
 
-            if (status < 0) {
-                perror(myargv[1]);
+            if (strcmp(myargv[1], HOME) == 0) {
+//                char * home = getenv("HOME");
+                path = getenv("HOME");
+                status = chdir(path);
+            } else if (myargv[1][0] == '$') {
+//                char * expanded_path = getenv(myargv[1]);
+                path = getenv((const char *) myargv[1][1]);         // excluding $
+                status = chdir(path);
+            } else if (strcmp(myargv[1], LINK_TO_PREVIOUS_WORKING_DIRECTORY) == 0) {
+                path = getenv("OLDPWD");
+                chdir(getenv(path));
             } else {
+                path = myargv[1];
+                status = chdir(path);
+            }
+            check_for_errors_gracefully(status, myargv[1]);
+
+            if (status) {
                 status = setenv("OLDPWD", CURRENT_WORKING_DIRECTORY, 1);
-                if (status < 0)
-                    perror(myargv[1]);
+                check_for_errors_gracefully(status, myargv[1]);
             }
 
             continue;
         }
-        
+
 
         if (strcmp(myargv[0], BUILTIN_PWD) == 0) {
 
             CURRENT_WORKING_DIRECTORY = getcwd(CURRENT_WORKING_DIRECTORY, PATH_MAX);
             ssize_t bytes_written = printf("%s\n", CURRENT_WORKING_DIRECTORY);
-            if (bytes_written < 0)
-                perror("Unable to write to STDOUT...");
+            check_for_errors_gracefully(bytes_written, "Write error...");
             continue;
         }
 
@@ -143,7 +151,7 @@ int repl()
         // processes start here:
         int status = 0;
         pid_t pid = fork();
-        check_for_errors(pid, "Failed to fork the existing process...");
+        check_for_errors_and_terminate(pid, "Failed to fork the existing process...");
 
         if (pid == 0) {
             execvp(myargv[0], myargv);
@@ -213,7 +221,7 @@ void reallocate(char ** array, size_t number_of_items)
 void display_prompt()
 {
     ssize_t bytes_written = write(STDOUT_FILENO, PROMPT, PROMPTSIZE);
-    check_for_errors(bytes_written, "Write error...");
+    check_for_errors_and_terminate(bytes_written, "Write error...");
 }
 
 ssize_t get_user_input(char * buf)
@@ -227,10 +235,16 @@ void err_exit(const char * error_message)
    exit(EXIT_FAILURE);
 }
 
-void check_for_errors(ssize_t status_code, const char * error_message)
+void check_for_errors_and_terminate(ssize_t status_code, const char * error_message)
 {
     if (status_code < 0)
         err_exit(error_message);
+}
+
+void check_for_errors_gracefully(ssize_t status_code, const char * error_message)
+{
+    if (status_code < 0)
+        perror(error_message);
 }
 
 void verify_memory_allocation(const char * ptr)
