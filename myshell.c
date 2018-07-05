@@ -139,40 +139,108 @@ int repl()
         printf("[process %d has started.]\n", pid);
         check_for_errors_gracefully(pid, "Fork failed...");
 
-        if (pid == 0 && !BACKGROUND_PROCESS) {
-            printf("\t[process %d has group id %d]\n", pid, getpgid(pid));            // DEBUG INFO
+
+//        if (pid == 0) {
+//            if (BACKGROUND_PROCESS)
+//                setpgid(pid, 0);                // moving a background child process to another process group
+//            printf("\t\t[process %d has group id %d]\n", pid, getpgid(pid));            // DEBUG INFO
+//
+//            status = execvp(myargv[0], myargv);
+//            err_exit("Execvp failed...");
+//        } else if (pid > 0 && !BACKGROUND_PROCESS) {
+//            setpgid(pid, getpgid(pid));
+//            printf("\t\t[process %d has group id %d]\n", pid, getpgid(pid));            // DEBUG INFO
+//
+//            if ((pid = waitpid(0, &status, WUNTRACED))) {           // 0: wait for any child process whose group id is equal to that of the calling process
+//                if (WIFEXITED(status))
+//                    printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
+//            }
+//
+//            if ((pid = waitpid(-1, &status, WNOHANG))) {
+//                if (WIFEXITED(status))
+//                    printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
+//            }
+//
+//
+//        } else if (pid > 0 && BACKGROUND_PROCESS) {
+//            printf("\t\t[process %d has group id %d]\n", pid, getpgid(pid));            // DEBUG INFO
+//
+//            if ((pid = waitpid(-1, &status, WNOHANG))) {
+//                if (WIFEXITED(status))
+//                    printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
+//            }
+//        }
+
+
+
+
+
+
+        if (pid == 0)
+        {
+            /** moving a background child to another process group */
+            if (BACKGROUND_PROCESS)
+                setpgid(pid, 0);
 
             status = execvp(myargv[0], myargv);
             err_exit("Execvp failed...");
-        } else if (pid == 0 && BACKGROUND_PROCESS) {
-            setpgid(pid, 0);
-            printf("\t\t[process %d has group id %d]\n", pid, getpgid(pid));            // DEBUG INFO
-
-            status = execvp(myargv[0], myargv);
-        } else if (pid > 0 && BACKGROUND_PROCESS) {
-            printf("\t\t[process %d has group id %d]\n", pid, getpgid(pid));            // DEBUG INFO
-
-            if ((pid = waitpid(pid, &status, WNOHANG)) == 0) {            // -1: wait for any child process
-                printf("[process %d is still running]\n", pid);
-            }
-
-            if ((pid = waitpid(-1, &status, WNOHANG))) {
+        }
+        else if (pid > 0 && BACKGROUND_PROCESS)
+        {
+            /** -1: wait for any child process */
+            if ((pid = waitpid(-1, &status, WNOHANG)))
                 if (WIFEXITED(status))
                     printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
-            }
-
-        } else if (pid > 0 && !BACKGROUND_PROCESS) {
+        }
+        else if (pid > 0 && !BACKGROUND_PROCESS)
+        {
             setpgid(pid, getpgid(pid));
-            printf("\t[process %d has group id %d]\n", pid, getpgid(pid));              // DEBUG INFO
 
-            if ((pid = waitpid(0, &status, WUNTRACED)))             // 0: wait for any child process whose group id is equal to that of the calling process
+            /** 0: wait for any child process whose group id is equal to that of the calling process */
+            if ((pid = waitpid(0, &status, WUNTRACED)))
                 if (WIFEXITED(status))
                     printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
 
+            /** -1: wait for any child process */
             if ((pid = waitpid(-1, &status, WNOHANG)) > 0)
                 if (WIFEXITED(status))
                     printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
         }
+
+
+
+
+
+//        if (pid == 0 && !BACKGROUND_PROCESS) {
+//            printf("\t[process %d has group id %d]\n", pid, getpgid(pid));            // DEBUG INFO
+//
+//            status = execvp(myargv[0], myargv);
+//            err_exit("Execvp failed...");
+//        } else if (pid == 0 && BACKGROUND_PROCESS) {
+//            setpgid(pid, 0);
+//            printf("\t\t[process %d has group id %d]\n", pid, getpgid(pid));            // DEBUG INFO
+//
+//            status = execvp(myargv[0], myargv);
+//        } else if (pid > 0 && BACKGROUND_PROCESS) {
+//            printf("\t\t[process %d has group id %d]\n", pid, getpgid(pid));            // DEBUG INFO
+//
+//            if ((pid = waitpid(-1, &status, WNOHANG))) {
+//                if (WIFEXITED(status))
+//                    printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
+//            }
+//
+//        } else if (pid > 0 && !BACKGROUND_PROCESS) {
+//            setpgid(pid, getpgid(pid));
+//            printf("\t[process %d has group id %d]\n", pid, getpgid(pid));              // DEBUG INFO
+//
+//            if ((pid = waitpid(0, &status, WUNTRACED)))             // 0: wait for any child process whose group id is equal to that of the calling process
+//                if (WIFEXITED(status))
+//                    printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
+//
+//            if ((pid = waitpid(-1, &status, WNOHANG)) > 0)
+//                if (WIFEXITED(status))
+//                    printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
+//        }
 
 
         free(buf);
