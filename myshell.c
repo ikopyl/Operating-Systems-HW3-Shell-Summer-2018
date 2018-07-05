@@ -60,6 +60,7 @@ void check_for_errors_and_terminate(ssize_t, const char *);
 void check_for_errors_gracefully(ssize_t, const char *);
 
 char is_background_process(char **, size_t *);
+void expand_home_path(char **, const size_t *);
 
 void builtin_cd(char **);
 void builtin_pwd();
@@ -109,45 +110,7 @@ int repl()
         myargv[myargc] = '\0';
         BACKGROUND_PROCESS = is_background_process(myargv, &myargc);
 
-//        printf("Before substitution:");
-//        for (int i = 0; i < myargc; i++) {
-//            printf("%s ", myargv[i]);
-//        }
-//        printf("\n");
-
-        for (int i = 1; i < myargc; i++) {
-            if (myargv[i][0] == HOME_SHORTCUT[0]) {
-                size_t len = strlen(myargv[i]);
-//                printf("\t\t\tLength of myargv[%d] is %zu\n", i, len);
-//                printf("\t\t\tOld path: %s\n", myargv[i]);
-//
-//                printf("\t\t\tPointer to old myargv[%d] is %p\n", i, &myargv[i]);
-//                printf("\t\t\tPointer to old myargv[%d] is %p\n", i, (void *) myargv[i][0]);
-
-                myargv[i] = myargv[i] + 1;
-
-                char * expanded_path = calloc(PATH_MAX, sizeof(char));
-                expanded_path = memcpy(expanded_path, PATH_TO_HOME, strlen(PATH_TO_HOME));
-
-                expanded_path = strcat(expanded_path, myargv[i]);
-//                printf("\t\tpointer to expanded_path: %p\n", (void *) expanded_path);
-                myargv[i] = expanded_path;
-
-                len = strlen(myargv[i]);
-//                printf("\t\t\tExpanded path length is %zu\n", len);
-//                printf("\t\t\tFinal path is: %s\n", myargv[i]);
-//
-//                printf("\t\t\tPointer to new myargv[%d] is %p\n", i, &myargv[i]);
-//                printf("\t\t\tPointer to new myargv[%d] is %p\n", i, (void *) myargv[i][0]);
-            }
-        }
-
-//        printf("After the substitution: ");
-//        for (int i = 0; i < myargc; i++) {
-//            printf("%s ", myargv[i]);
-//        }
-//        printf("\n");
-
+        expand_home_path(myargv, &myargc);
 
         // builtins start here:
         if (myargc == 1 && strcmp(myargv[0], BUILTIN_EXIT) == 0)
@@ -220,6 +183,22 @@ int repl()
     } while (bytes_read > 0);           // Terminated by EOF (Ctrl+D)
 
     return EXIT_SUCCESS;
+}
+
+void expand_home_path(char ** myargv, const size_t * myargc)
+{
+    for (int i = 1; i < *myargc; i++) {
+        if (myargv[i][0] == HOME_SHORTCUT[0]) {
+
+            myargv[i] = myargv[i] + 1;                  // leaving '~' behind the scope
+
+            char * expanded_path = calloc(PATH_MAX, sizeof(char));
+            expanded_path = memcpy(expanded_path, PATH_TO_HOME, strlen(PATH_TO_HOME));
+
+            expanded_path = strcat(expanded_path, myargv[i]);
+            myargv[i] = expanded_path;                  // myargv[i] now stores a pointer to expanded_path
+        }
+    }
 }
 
 char is_background_process(char ** myargv, size_t *myargc)
