@@ -139,7 +139,6 @@ int repl()
         printf("[process %d has started.]\n", pid);
         check_for_errors_gracefully(pid, "Fork failed...");
 
-
         if (pid == 0)
         {
             /** moving a background child to another process group */
@@ -149,13 +148,6 @@ int repl()
             status = execvp(myargv[0], myargv);
             err_exit("Execvp failed...");
         }
-//        else if (pid > 0 && BACKGROUND_PROCESS)
-//        {
-//            /** -1: wait for any child process */
-//            if ((pid = waitpid(-1, &status, WNOHANG)))
-//                if (WIFEXITED(status))
-//                    printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
-//        }
         else if (pid > 0)
         {
             if (!BACKGROUND_PROCESS)
