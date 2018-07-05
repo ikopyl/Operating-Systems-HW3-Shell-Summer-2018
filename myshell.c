@@ -18,26 +18,29 @@
 #include <fcntl.h>
 #include <errno.h>
 
-//Max amount allowed to read from input
-#define BUFFERSIZE 256
-#define PATH_MAX 4096
+#define BUFFERSIZE 256                  /** Max number of bytes allowed to be read from input (at once) */
+#define PATH_MAX 4096                   /** Max number of bytes in a path */
+
+#define BUILTIN_CD "cd"
+#define BUILTIN_PWD "pwd"
+#define BUILTIN_EXIT "exit"
 
 #define HOME_SHORTCUT "~"
 #define OLDPWD_SHORTCUT "-"
 
-#define HOMESIZE sizeof(HOME_SHORTCUT)
-
-#define ENV_VAR_CHAR_RECOGNIZER '$'
 #define ENV_VAR_HOME "HOME"
 #define ENV_VAR_OLDPWD "OLDPWD"
+#define ENV_VAR_CHAR_RECOGNIZER '$'     /** if a token in input string starts with '$', it will be treated as an environment variable */
 
-#define PROMPT "myShell >> "            // shell prompt
-#define PROMPTSIZE sizeof(PROMPT)       // sizeof shell prompt
-#define BUILTIN_EXIT "exit"
-#define BUILTIN_CD "cd"
-#define BUILTIN_PWD "pwd"
+#define HOMESIZE sizeof(HOME_SHORTCUT)
 
-#define ARGVMAX 32                      // initial number of tokens, but the value will double after each realloc()
+#define PROMPT "myShell >> "            /** shell prompt */
+#define PROMPTSIZE sizeof(PROMPT)       /** size of shell prompt */
+
+
+/** initial number of tokens in myargv, but the value will double after each realloc() */
+#define ARGVMAX 32
+
 static size_t MAX_ITEMS_ALLOWED;
 static char * CURRENT_WORKING_DIRECTORY;
 static char BACKGROUND_PROCESS;
@@ -85,7 +88,7 @@ int repl()
     ssize_t bytes_read = 0;
 
     do {
-        ssize_t eol = 0;            // stores a position of newline character
+        ssize_t eol = 0;                /** stores a position of a newline character */
 
         buf = calloc(BUFFERSIZE, sizeof(char));
         verify_memory_allocation(buf);
@@ -99,12 +102,14 @@ int repl()
 
             myargc = tokenize_input(buf, delimiter, myargv, myargc);
 
+            /** if true, proceed to executing the commands, and then clear buf & display shell prompt again */
             if (bytes_read < BUFFERSIZE || eol >= 0)
-                break;          // clear buf & display console prompt again
+                break;
         }
         check_for_errors_and_terminate(bytes_read, "Read error...");
 
-        if (eol == 0)       // empty string, skip the rest of the loop & display a new prompt
+        /** if input string is empty, skip the rest of the code and continue to a new loop iteration */
+        if (eol == 0)
             continue;
 
         myargv[myargc] = '\0';
@@ -112,7 +117,7 @@ int repl()
 
         expand_home_path(myargv, &myargc);
 
-        // builtins start here:
+        /** code for handling builtins starts here: */
         if (myargc == 1 && strcmp(myargv[0], BUILTIN_EXIT) == 0)
             return EXIT_SUCCESS;
 
@@ -128,7 +133,7 @@ int repl()
 
 
 
-        // processes start here:
+        /** code for handling processes starts here: */
         int status = 0;
         pid_t pid = fork();
         printf("[process %d has started.]\n", pid);
@@ -173,7 +178,7 @@ int repl()
         myargv = NULL;
         buf = NULL;
 
-    } while (bytes_read > 0);           // Terminated by EOF (Ctrl+D)
+    } while (bytes_read > 0);           /** loop can also be terminated by EOF (Ctrl + D) */
 
     return EXIT_SUCCESS;
 }
@@ -186,8 +191,8 @@ void expand_home_path(char ** myargv, const size_t * myargc)
             char * expanded_path = calloc(PATH_MAX, sizeof(char));
             expanded_path = memcpy(expanded_path, PATH_TO_HOME, strlen(PATH_TO_HOME));
 
-            expanded_path = strcat(expanded_path, myargv[i] + 1);       // leaving '~' behind the scope
-            myargv[i] = expanded_path;                                  // myargv[i] now stores a pointer to expanded_path
+            expanded_path = strcat(expanded_path, myargv[i] + 1);       /** leaving '~' behind the scope */
+            myargv[i] = expanded_path;                                  /** myargv[i] now stores a pointer to expanded_path */
         }
     }
 }
@@ -213,7 +218,7 @@ void builtin_cd(char ** myargv)
     else if (strcmp(myargv[1], OLDPWD_SHORTCUT) == 0)
         path = getenv(ENV_VAR_OLDPWD);
     else if (myargv[1][0] == ENV_VAR_CHAR_RECOGNIZER)
-        path = getenv((const char *) myargv[1] + 1);            // excluding $ character
+        path = getenv((const char *) myargv[1] + 1);            /** excluding '$' character */
     else
         path = myargv[1];
 
