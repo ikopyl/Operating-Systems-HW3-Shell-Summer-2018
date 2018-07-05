@@ -130,19 +130,34 @@ int repl()
         // processes start here:
         int status = 0;
         pid_t pid = fork();
+        printf("[process %d has started.]\n", pid);
         check_for_errors_gracefully(pid, "Fork failed...");
 
-        if (pid == 0) {
+        if (pid == 0 && !BACKGROUND_PROCESS) {
             status = execvp(myargv[0], myargv);
             err_exit("Execvp failed...");
-        } else {
-            BACKGROUND_PROCESS ? waitpid(pid, &status, WNOHANG) : waitpid(pid, &status, WUNTRACED);
-//            BACKGROUND_PROCESS ? waitpid(-1, &status, WNOHANG) : waitpid(pid, &status, WUNTRACED);
+        } else if (pid == 0 && BACKGROUND_PROCESS) {
+            setpgid(pid, 0);
 
-//            wait(&status);
-//            waitpid(pid, &status, WNOHANG);             // should I use it for & use-case?
+            status = execvp(myargv[0], myargv);
+        } else if (pid > 0 && BACKGROUND_PROCESS) {
+
+            if ((pid = waitpid(-1, &status, WNOHANG))) {            // -1: wait for any child process
+                if (WIFCONTINUED(status))
+                    printf("[process %d continued]", pid);
+            }
+
+        } else if (pid > 0 && !BACKGROUND_PROCESS) {
+            setpgid(pid, getpgid(pid));
+
+            if ((pid = waitpid(0, &status, WUNTRACED)))             // 0: wait for any child process whose group id is equal to that of the calling process
+                if (WIFEXITED(status))
+                    printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
+
+            if ((pid = waitpid(-1, &status, WNOHANG)) > 0)
+                if (WIFEXITED(status))
+                    printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
         }
-
 
 
         free(buf);
