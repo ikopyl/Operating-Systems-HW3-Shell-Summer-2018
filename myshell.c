@@ -149,21 +149,24 @@ int repl()
             status = execvp(myargv[0], myargv);
             err_exit("Execvp failed...");
         }
-        else if (pid > 0 && BACKGROUND_PROCESS)
+//        else if (pid > 0 && BACKGROUND_PROCESS)
+//        {
+//            /** -1: wait for any child process */
+//            if ((pid = waitpid(-1, &status, WNOHANG)))
+//                if (WIFEXITED(status))
+//                    printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
+//        }
+        else if (pid > 0)
         {
-            /** -1: wait for any child process */
-            if ((pid = waitpid(-1, &status, WNOHANG)))
-                if (WIFEXITED(status))
-                    printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
-        }
-        else if (pid > 0 && !BACKGROUND_PROCESS)
-        {
-            setpgid(pid, getpgid(pid));
+            if (!BACKGROUND_PROCESS)
+            {
+                setpgid(pid, getpgid(pid));
 
-            /** 0: wait for any child process whose group id is equal to that of the calling process */
-            if ((pid = waitpid(0, &status, WUNTRACED)))
-                if (WIFEXITED(status))
-                    printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
+                /** 0: wait for any child process whose group id is equal to that of the calling process */
+                if ((pid = waitpid(0, &status, WUNTRACED)))
+                    if (WIFEXITED(status))
+                        printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
+            }
 
             /** -1: wait for any child process */
             if ((pid = waitpid(-1, &status, WNOHANG)) > 0)
