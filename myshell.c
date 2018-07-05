@@ -134,21 +134,30 @@ int repl()
         check_for_errors_gracefully(pid, "Fork failed...");
 
         if (pid == 0 && !BACKGROUND_PROCESS) {
+            printf("\t[process %d has group id %d]\n", pid, getpgid(pid));            // DEBUG INFO
+
             status = execvp(myargv[0], myargv);
             err_exit("Execvp failed...");
         } else if (pid == 0 && BACKGROUND_PROCESS) {
             setpgid(pid, 0);
+            printf("\t\t[process %d has group id %d]\n", pid, getpgid(pid));            // DEBUG INFO
 
             status = execvp(myargv[0], myargv);
         } else if (pid > 0 && BACKGROUND_PROCESS) {
+            printf("\t\t[process %d has group id %d]\n", pid, getpgid(pid));            // DEBUG INFO
 
-            if ((pid = waitpid(-1, &status, WNOHANG))) {            // -1: wait for any child process
-                if (WIFCONTINUED(status))
-                    printf("[process %d continued]", pid);
+            if ((pid = waitpid(pid, &status, WNOHANG)) == 0) {            // -1: wait for any child process
+                printf("[process %d is still running]\n", pid);
+            }
+
+            if ((pid = waitpid(-1, &status, WNOHANG))) {
+                if (WIFEXITED(status))
+                    printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
             }
 
         } else if (pid > 0 && !BACKGROUND_PROCESS) {
             setpgid(pid, getpgid(pid));
+            printf("\t[process %d has group id %d]\n", pid, getpgid(pid));              // DEBUG INFO
 
             if ((pid = waitpid(0, &status, WUNTRACED)))             // 0: wait for any child process whose group id is equal to that of the calling process
                 if (WIFEXITED(status))
