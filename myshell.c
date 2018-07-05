@@ -42,6 +42,8 @@ static size_t MAX_ITEMS_ALLOWED;
 static char * CURRENT_WORKING_DIRECTORY;
 static char BACKGROUND_PROCESS;
 
+static const char * PATH_TO_HOME;
+
 int repl();
 void display_prompt();
 
@@ -69,6 +71,8 @@ int main(int* argc, char** argv)
 
 int repl()
 {
+    PATH_TO_HOME = getenv(ENV_VAR_HOME);
+
     CURRENT_WORKING_DIRECTORY = NULL;
     BACKGROUND_PROCESS = 0;
 
@@ -104,6 +108,45 @@ int repl()
 
         myargv[myargc] = '\0';
         BACKGROUND_PROCESS = is_background_process(myargv, &myargc);
+
+//        printf("Before substitution:");
+//        for (int i = 0; i < myargc; i++) {
+//            printf("%s ", myargv[i]);
+//        }
+//        printf("\n");
+
+        for (int i = 1; i < myargc; i++) {
+            if (myargv[i][0] == HOME_SHORTCUT[0]) {
+                size_t len = strlen(myargv[i]);
+//                printf("\t\t\tLength of myargv[%d] is %zu\n", i, len);
+//                printf("\t\t\tOld path: %s\n", myargv[i]);
+//
+//                printf("\t\t\tPointer to old myargv[%d] is %p\n", i, &myargv[i]);
+//                printf("\t\t\tPointer to old myargv[%d] is %p\n", i, (void *) myargv[i][0]);
+
+                myargv[i] = myargv[i] + 1;
+
+                char * expanded_path = calloc(PATH_MAX, sizeof(char));
+                expanded_path = memcpy(expanded_path, PATH_TO_HOME, strlen(PATH_TO_HOME));
+
+                expanded_path = strcat(expanded_path, myargv[i]);
+//                printf("\t\tpointer to expanded_path: %p\n", (void *) expanded_path);
+                myargv[i] = expanded_path;
+
+                len = strlen(myargv[i]);
+//                printf("\t\t\tExpanded path length is %zu\n", len);
+//                printf("\t\t\tFinal path is: %s\n", myargv[i]);
+//
+//                printf("\t\t\tPointer to new myargv[%d] is %p\n", i, &myargv[i]);
+//                printf("\t\t\tPointer to new myargv[%d] is %p\n", i, (void *) myargv[i][0]);
+            }
+        }
+
+//        printf("After the substitution: ");
+//        for (int i = 0; i < myargc; i++) {
+//            printf("%s ", myargv[i]);
+//        }
+//        printf("\n");
 
 
         // builtins start here:
@@ -196,7 +239,8 @@ void builtin_cd(char ** myargv)
     char * path = 0;
 
     if (strcmp(myargv[1], HOME_SHORTCUT) == 0)
-        path = getenv(ENV_VAR_HOME);
+//        path = getenv(ENV_VAR_HOME);
+        path = (char *) PATH_TO_HOME;
     else if (strcmp(myargv[1], OLDPWD_SHORTCUT) == 0)
         path = getenv(ENV_VAR_OLDPWD);
     else if (myargv[1][0] == ENV_VAR_CHAR_RECOGNIZER)
