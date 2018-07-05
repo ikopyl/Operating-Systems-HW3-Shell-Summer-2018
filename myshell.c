@@ -188,15 +188,13 @@ int repl()
 void expand_home_path(char ** myargv, const size_t * myargc)
 {
     for (int i = 1; i < *myargc; i++) {
-        if (myargv[i][0] == HOME_SHORTCUT[0]) {
-
-            myargv[i] = myargv[i] + 1;                  // leaving '~' behind the scope
-
+        if (myargv[i][0] == HOME_SHORTCUT[0])
+        {
             char * expanded_path = calloc(PATH_MAX, sizeof(char));
             expanded_path = memcpy(expanded_path, PATH_TO_HOME, strlen(PATH_TO_HOME));
 
-            expanded_path = strcat(expanded_path, myargv[i]);
-            myargv[i] = expanded_path;                  // myargv[i] now stores a pointer to expanded_path
+            expanded_path = strcat(expanded_path, myargv[i] + 1);       // leaving '~' behind the scope
+            myargv[i] = expanded_path;                                  // myargv[i] now stores a pointer to expanded_path
         }
     }
 }
@@ -218,7 +216,6 @@ void builtin_cd(char ** myargv)
     char * path = 0;
 
     if (strcmp(myargv[1], HOME_SHORTCUT) == 0)
-//        path = getenv(ENV_VAR_HOME);
         path = (char *) PATH_TO_HOME;
     else if (strcmp(myargv[1], OLDPWD_SHORTCUT) == 0)
         path = getenv(ENV_VAR_OLDPWD);
