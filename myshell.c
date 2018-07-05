@@ -40,11 +40,12 @@
 #define ARGVMAX 32                      // initial number of tokens, but the value will double after each realloc()
 static size_t MAX_ITEMS_ALLOWED;
 static char * CURRENT_WORKING_DIRECTORY;
+static char BACKGROUND_PROCESS;
 
 int repl();
 void display_prompt();
 
-size_t strip(char *, char, ssize_t);
+ssize_t strip(char *, char, ssize_t);
 ssize_t get_user_input(char *);
 size_t tokenize_input(char *, char *, char **, size_t);
 
@@ -55,6 +56,8 @@ void err_exit(const char *);
 void verify_memory_allocation(const char *);
 void check_for_errors_and_terminate(ssize_t, const char *);
 void check_for_errors_gracefully(ssize_t, const char *);
+
+char is_background_process(char **, size_t *);
 
 void builtin_cd(char **);
 void builtin_pwd();
@@ -67,6 +70,7 @@ int main(int* argc, char** argv)
 int repl()
 {
     CURRENT_WORKING_DIRECTORY = NULL;
+    BACKGROUND_PROCESS = 0;
 
     char * delimiter = " \t";
 
@@ -76,6 +80,8 @@ int repl()
     ssize_t bytes_read = 0;
 
     do {
+        ssize_t eol = 0;            // stores a position of newline character
+
         buf = calloc(BUFFERSIZE, sizeof(char));
         verify_memory_allocation(buf);
 
@@ -84,16 +90,20 @@ int repl()
         display_prompt();
         while ((bytes_read = get_user_input(buf)))
         {
-            size_t eol = strip(buf, '\n', bytes_read);
+            eol = strip(buf, '\n', bytes_read);
 
             myargc = tokenize_input(buf, delimiter, myargv, myargc);
 
-            if (bytes_read < BUFFERSIZE || eol)
+            if (bytes_read < BUFFERSIZE || eol >= 0)
                 break;          // clear buf & display console prompt again
         }
         check_for_errors_and_terminate(bytes_read, "Read error...");
 
+        if (eol == 0)       // empty string, skip the rest of the loop & display a new prompt
+            continue;
+
         myargv[myargc] = '\0';
+        BACKGROUND_PROCESS = is_background_process(myargv, &myargc);
 
 
         // builtins start here:
@@ -124,9 +134,12 @@ int repl()
 
         if (pid == 0) {
             status = execvp(myargv[0], myargv);
-            err_exit(myargv[0]);
+            err_exit("Execvp failed...");
         } else {
-            wait(&status);
+            BACKGROUND_PROCESS ? waitpid(pid, &status, WNOHANG) : waitpid(pid, &status, WUNTRACED);
+//            BACKGROUND_PROCESS ? waitpid(-1, &status, WNOHANG) : waitpid(pid, &status, WUNTRACED);
+
+//            wait(&status);
 //            waitpid(pid, &status, WNOHANG);             // should I use it for & use-case?
         }
 
@@ -140,6 +153,16 @@ int repl()
     } while (bytes_read > 0);           // Terminated by EOF (Ctrl+D)
 
     return EXIT_SUCCESS;
+}
+
+char is_background_process(char ** myargv, size_t *myargc)
+{
+    if (strcmp(myargv[*myargc - 1], "&") == 0) {
+        myargv[*myargc - 1] = '\0';
+        *myargc -= 1;
+        return 1;
+    }
+    return 0;
 }
 
 
@@ -188,10 +211,10 @@ size_t tokenize_input(char * buf, char * delimiter, char ** myargv, size_t myarg
 }
 
 /** Return either the last position where the character was
- * stripped, or return 0 if match was not found in the array. */
-size_t strip(char * buf, const char character, const ssize_t bytes_read)
+ * stripped, or return -1 if match was not found in the array. */
+ssize_t strip(char * buf, const char character, const ssize_t bytes_read)
 {
-    size_t position = 0;
+    ssize_t position = -1;
     for (int i = 0; i < bytes_read; i++) {
         if (buf[i] == character) {
            buf[i] = '\0';
