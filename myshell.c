@@ -84,6 +84,9 @@ char is_background_process(char **, size_t *);
 void expand_home_path(char **, const size_t *);
 void parse_redirects(char **, size_t *);
 
+void enable_redirects();
+void disable_redirects(int *, int *);
+
 void builtin_cd(char **, const size_t *);
 void builtin_pwd();
 
@@ -181,7 +184,6 @@ int repl()
 
 int open_to_read(const char * path)
 {
-//    printf("Open to read from: %s\n", path);
     int fd = open(path, O_RDONLY);
     check_for_errors_gracefully(fd, "Failed to open a file to read from ");
     return fd;
@@ -189,7 +191,6 @@ int open_to_read(const char * path)
 
 int open_to_append_write(const char * path)
 {
-//    printf("Open to write to (APPEND): %s\n", path);
     int fd = open(path, O_CREAT|O_WRONLY|O_APPEND,  S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
     check_for_errors_gracefully(fd, "Failed to open a file to write to (APPEND) ");
     return fd;
@@ -197,7 +198,6 @@ int open_to_append_write(const char * path)
 
 int open_to_trunc_write(const char * path)
 {
-//    printf("Open to write to (TRUNCATE): %s\n", path);
     int fd = open(path, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
     check_for_errors_gracefully(fd, "Failed to open a file to write to (TRUNCATE) ");
     return fd;
@@ -219,6 +219,10 @@ char builtin_found_and_executed(char **myargv, const size_t * myargc)
     }
 
     if (strcmp(myargv[0], BUILTIN_PWD) == 0) {
+
+
+        // ADD FUNC CALLS
+
         builtin_pwd();
         return 1;
     }
@@ -243,21 +247,7 @@ void execute_process(char ** myargv, size_t * myargc)
         if (BACKGROUND_PROCESS)
             setpgid(pid, 0);
 
-
-        if (REDIRECT_IN_DETECTED) {
-            IN_FD = open_to_read(INFILE_PATH);
-            dup2(IN_FD, STDIN_FILENO);
-        }
-
-        if (REDIRECT_OUT_TRUNC_DETECTED) {
-            OUT_FD = open_to_trunc_write(OUTFILE_PATH);
-            dup2(OUT_FD, STDOUT_FILENO);
-        }
-
-        if (REDIRECT_OUT_APPEND_DETECTED) {
-            OUT_FD = open_to_append_write(OUTFILE_PATH);
-            dup2(OUT_FD, STDOUT_FILENO);
-        }
+        enable_redirects();
 
         execvp(myargv[0], myargv);
         err_exit("Execvp failed...");
@@ -372,6 +362,29 @@ void parse_redirects(char ** myargv, size_t * myargc)
     }
 }
 
+void enable_redirects()
+{
+    if (REDIRECT_IN_DETECTED) {
+        IN_FD = open_to_read(INFILE_PATH);
+        dup2(IN_FD, STDIN_FILENO);
+    }
+
+    if (REDIRECT_OUT_TRUNC_DETECTED) {
+        OUT_FD = open_to_trunc_write(OUTFILE_PATH);
+        dup2(OUT_FD, STDOUT_FILENO);
+    }
+
+    if (REDIRECT_OUT_APPEND_DETECTED) {
+        OUT_FD = open_to_append_write(OUTFILE_PATH);
+        dup2(OUT_FD, STDOUT_FILENO);
+    }
+}
+
+void disable_redirects(int * stdin_backup, int * stdout_backup)
+{
+
+}
+
 void builtin_cd(char ** myargv, const size_t * myargc)
 {
     CURRENT_WORKING_DIRECTORY = getcwd(CURRENT_WORKING_DIRECTORY, PATH_MAX);
@@ -405,7 +418,9 @@ void builtin_cd(char ** myargv, const size_t * myargc)
 void builtin_pwd()
 {
     CURRENT_WORKING_DIRECTORY = getcwd(CURRENT_WORKING_DIRECTORY, PATH_MAX);
-    ssize_t bytes_written = printf("%s\n", CURRENT_WORKING_DIRECTORY);
+    ssize_t bytes_written = write(STDOUT_FILENO, CURRENT_WORKING_DIRECTORY, strlen(CURRENT_WORKING_DIRECTORY));
+    check_for_errors_gracefully(bytes_written, "Write error...");
+    bytes_written = write(STDOUT_FILENO, "\n", 1);
     check_for_errors_gracefully(bytes_written, "Write error...");
 }
 
