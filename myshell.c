@@ -89,7 +89,7 @@ void execute_process(char **, size_t *);
 
 int open_to_read(const char *);
 int open_to_append_write(const char *);
-int open_to_truncate_write(const char *);
+int open_to_trunc_write(const char *);
 void close_fd(int *);
 
 int main(int* argc, char** argv)
@@ -147,10 +147,10 @@ int repl()
 
 
         /** next 4 lines - DEBUG INFO */
-//        size_t position = 0;
-//        while (myargv[position]) {
-//            printf("%s\n", myargv[position++]);
-//        }
+        size_t position = 0;
+        while (myargv[position]) {
+            printf("%s\n", myargv[position++]);
+        }
 
 
         // TO DO: built-in pwd should support out-redirect
@@ -181,21 +181,21 @@ int repl()
 int open_to_read(const char * path)
 {
     int fd = open(path, O_RDONLY);
-    check_for_errors_gracefully(fd, "File open error...");
+    check_for_errors_gracefully(fd, strcat("Failed to open a file ", path));
     return fd;
 }
 
 int open_to_append_write(const char * path)
 {
     int fd = open(path, O_CREAT|O_WRONLY|O_APPEND, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
-    check_for_errors_gracefully(fd, "File open error...");
+    check_for_errors_gracefully(fd, strcat("Failed to open a file ", path));
     return fd;
 }
 
-int open_to_truncate_write(const char * path)
+int open_to_trunc_write(const char * path)
 {
     int fd = open(path, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
-    check_for_errors_gracefully(fd, "File open error...");
+    check_for_errors_gracefully(fd, strcat("Failed to open a file ", path));
     return fd;
 }
 
@@ -225,18 +225,7 @@ char builtin_found_and_executed(char **myargv, const size_t * myargc)
 void execute_process(char ** myargv, size_t * myargc)
 {
     int status = 0;
-
-
-    if (REDIRECT_IN_DETECTED)
-        printf("REDIRECT_IN_DETECTED\n");
-
-    if (REDIRECT_OUT_TRUNC_DETECTED)
-        printf("REDIRECT_OUT_TRUNC_DETECTED\n");
-
-    if (REDIRECT_OUT_APPEND_DETECTED)
-        printf("REDIRECT_OUT_APPEND_DETECTED\n");
-
-
+    int in_fd = 0, out_fd = 0;
 
     pid_t pid = fork();
     printf("[process %d has started.]\n", pid);
@@ -247,6 +236,27 @@ void execute_process(char ** myargv, size_t * myargc)
         /** moving a background child to another process group */
         if (BACKGROUND_PROCESS)
             setpgid(pid, 0);
+
+        if (REDIRECT_IN_DETECTED) {
+            in_fd = open_to_read(INFILE_PATH);
+            printf("opening INFILE_PATH: %s, descriptor: %d\n", INFILE_PATH, in_fd);           // DEBUG INFO
+
+            dup2(in_fd, STDIN_FILENO);
+        }
+
+        if (REDIRECT_OUT_TRUNC_DETECTED) {
+            out_fd = open_to_trunc_write(OUTFILE_PATH);
+            printf("opening OUTFILE_PATH: %s, descriptor: %d\n", OUTFILE_PATH, out_fd);         // DEBUG INFO
+
+            dup2(out_fd, STDOUT_FILENO);
+        }
+
+        if (REDIRECT_OUT_APPEND_DETECTED) {
+            out_fd = open_to_append_write(OUTFILE_PATH);
+            printf("opening OUTFILE_PATH: %s, descriptor: %d\n", OUTFILE_PATH, out_fd);         // DEBUG INFO
+
+            dup2(out_fd, STDOUT_FILENO);
+        }
 
 
         execvp(myargv[0], myargv);
@@ -259,15 +269,48 @@ void execute_process(char ** myargv, size_t * myargc)
             setpgid(pid, getpgid(pid));
 
             /** 0: wait for any child process whose group id is equal to that of the calling process */
-            if ((pid = waitpid(0, &status, WUNTRACED)))
+            if ((pid = waitpid(0, &status, WUNTRACED))) {
                 if (WIFEXITED(status))
                     printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
+
+//                if (REDIRECT_IN_DETECTED) {
+//                    close_fd(&in_fd);
+//                    REDIRECT_IN_DETECTED = 0;
+//                }
+//
+//                if (REDIRECT_OUT_TRUNC_DETECTED) {
+//                    close_fd(&out_fd);
+//                    REDIRECT_OUT_TRUNC_DETECTED = 0;
+//                }
+//
+//                if (REDIRECT_OUT_APPEND_DETECTED) {
+//                    close_fd(&out_fd);
+//                    REDIRECT_OUT_APPEND_DETECTED = 0;
+//                }
+            }
         }
 
         /** -1: wait for any child process */
-        if ((pid = waitpid(-1, &status, WNOHANG)) > 0)
+        if ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
             if (WIFEXITED(status))
                 printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
+
+            if (REDIRECT_IN_DETECTED) {
+                close_fd(&in_fd);
+                REDIRECT_IN_DETECTED = 0;
+            }
+
+            if (REDIRECT_OUT_TRUNC_DETECTED) {
+                close_fd(&out_fd);
+                REDIRECT_OUT_TRUNC_DETECTED = 0;
+            }
+
+            if (REDIRECT_OUT_APPEND_DETECTED) {
+                close_fd(&out_fd);
+                REDIRECT_OUT_APPEND_DETECTED = 0;
+            }
+
+        }
     }
 }
 
