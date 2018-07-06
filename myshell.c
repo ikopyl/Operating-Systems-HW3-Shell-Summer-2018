@@ -85,7 +85,7 @@ void expand_home_path(char **, const size_t *);
 void parse_redirects(char **, size_t *);
 
 void enable_redirects();
-void disable_redirects(int *, int *);
+void disable_redirects(const int *, const int *);
 
 void builtin_cd(char **, const size_t *);
 void builtin_pwd();
@@ -275,24 +275,8 @@ void execute_process(char ** myargv, size_t * myargc)
 
     }
 
-    if (REDIRECT_IN_DETECTED) {
-        close_fd(&IN_FD);
-        dup2(stdin_backup, STDIN_FILENO);
-        REDIRECT_IN_DETECTED = 0;
-    }
-
-    if (REDIRECT_OUT_TRUNC_DETECTED) {
-        close_fd(&OUT_FD);
-        dup2(stdout_backup, STDOUT_FILENO);
-        REDIRECT_OUT_TRUNC_DETECTED = 0;
-    }
-
-    if (REDIRECT_OUT_APPEND_DETECTED) {
-        close_fd(&OUT_FD);
-        dup2(stdout_backup, STDOUT_FILENO);
-        REDIRECT_OUT_APPEND_DETECTED = 0;
-    }
-
+    disable_redirects(&stdin_backup, &stdout_backup);
+    
 }
 
 void expand_home_path(char ** myargv, const size_t * myargc)
@@ -380,9 +364,25 @@ void enable_redirects()
     }
 }
 
-void disable_redirects(int * stdin_backup, int * stdout_backup)
+void disable_redirects(const int * stdin_backup, const int * stdout_backup)
 {
+    if (REDIRECT_IN_DETECTED) {
+        close_fd(&IN_FD);
+        dup2(*stdin_backup, STDIN_FILENO);
+        REDIRECT_IN_DETECTED = 0;
+    }
 
+    if (REDIRECT_OUT_TRUNC_DETECTED) {
+        close_fd(&OUT_FD);
+        dup2(*stdout_backup, STDOUT_FILENO);
+        REDIRECT_OUT_TRUNC_DETECTED = 0;
+    }
+
+    if (REDIRECT_OUT_APPEND_DETECTED) {
+        close_fd(&OUT_FD);
+        dup2(*stdout_backup, STDOUT_FILENO);
+        REDIRECT_OUT_APPEND_DETECTED = 0;
+    }
 }
 
 void builtin_cd(char ** myargv, const size_t * myargc)
