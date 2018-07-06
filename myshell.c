@@ -25,9 +25,9 @@
 #define BUILTIN_PWD "pwd"
 #define BUILTIN_EXIT "exit"
 
-#define REDIRECT_IN "<"
-#define REDIRECT_OUT ">"
-#define REDIRECT_OUT_APPEND ">>"
+#define REDIRECT_IN_SYMBOL "<"
+#define REDIRECT_OUT_SYMBOL ">"
+#define REDIRECT_OUT_APPEND_SYMBOL ">>"
 #define BACKGROUND_PROCESS_SYMBOL "&"
 
 #define HOME_SHORTCUT "~"
@@ -50,13 +50,20 @@ static size_t MAX_ITEMS_ALLOWED;
 static char * CURRENT_WORKING_DIRECTORY;
 static char BACKGROUND_PROCESS;
 
+static char REDIRECT_INPUT_DETECTED;
+static char REDIRECT_OUTPUT_DETECTED;
+
+static char * INFILE_PATH;
+static char * OUTFILE_PATH;
+static char * PATH_TO_FILE;
+
 static const char * PATH_TO_HOME;
 
 int repl();
 void display_prompt();
 
 ssize_t strip(char *, char, ssize_t);
-ssize_t strip_myargv(char **, size_t *, const char *, char *);
+ssize_t strip_myargv(char **, size_t *, const char *);
 
 ssize_t get_user_input(char *);
 size_t tokenize_input(char *, char *, char **, size_t);
@@ -92,7 +99,14 @@ int repl()
 {
     PATH_TO_HOME = getenv(ENV_VAR_HOME);
     CURRENT_WORKING_DIRECTORY = NULL;
+
     BACKGROUND_PROCESS = 0;
+
+    REDIRECT_INPUT_DETECTED = 0;
+    REDIRECT_OUTPUT_DETECTED = 0;
+    INFILE_PATH = NULL;
+    OUTFILE_PATH = NULL;
+    PATH_TO_FILE = NULL;
 
     char * delimiter = " \t";
 
@@ -129,7 +143,19 @@ int repl()
         myargv[myargc] = '\0';
         BACKGROUND_PROCESS = is_background_process(myargv, &myargc);
 
+
+        ssize_t status = 0;
         /** a check for redirects starts here */
+        if ((status = strip_myargv(myargv, &myargc, REDIRECT_IN_SYMBOL))) {
+
+            printf("STRIP_MYARGV STATUS: %zu\n", status);
+            printf("PATH_TO_FILE: %s\n", PATH_TO_FILE);
+            printf("myargc = %zu\n", myargc);
+            printf("myargv: \n");
+            for (int i = 0; i < myargc; i++)
+                printf("%s ", myargv[i]);
+        }
+
 
         expand_home_path(myargv, &myargc);
 
@@ -245,18 +271,21 @@ void expand_home_path(char ** myargv, const size_t * myargc)
     }
 }
 
-ssize_t strip_myargv(char ** myargv, size_t * myargc, const char * search_item, char * path_to_file)
+/** Function for parsing the redirect characters. Returns the position of the
+ * first matched char * of 1 character from the end of myargv. Sets PATH_TO_FILE
+ * to the value of the next token in the myargv array after the matched character (if it exists).
+ * It replaces the found character with \0 and decrements myargc accordingly. */
+ssize_t strip_myargv(char ** myargv, size_t * myargc, const char * search_item)
 {
-//    ssize_t position = -1;
-    for (size_t i = *myargc - 1; i >= 0; i--)
+    for (int i = (int) (*myargc - 1); i >= 0; i--)
     {
-        if (strcmp(myargv[i], search_item) == 0)
+        if (strcmp((const char *) myargv[i], search_item) == 0)
         {
             if (*myargc - i > 1) {
-               path_to_file = (char *) myargc[i + 1];
+                PATH_TO_FILE = myargv[i+1];
             }
             myargv[i] = '\0';
-            *myargc = i - 1;
+            *myargc = (size_t) (i - 1);
 
             return i;
         }
@@ -282,9 +311,9 @@ void builtin_cd(char ** myargv, const size_t * myargc)
     if (strcmp(myargv[1], HOME_SHORTCUT) == 0)
         path = (char *) PATH_TO_HOME;
     else if (*myargc > 2 &&                                         /** bash also does not support redirects for cd */
-            ((strcmp(myargv[1], REDIRECT_IN) == 0)
-             || (strcmp(myargv[1], REDIRECT_OUT) == 0)
-             || (strcmp(myargv[1], REDIRECT_OUT_APPEND) == 0)
+            ((strcmp(myargv[1], REDIRECT_IN_SYMBOL) == 0)
+             || (strcmp(myargv[1], REDIRECT_OUT_SYMBOL) == 0)
+             || (strcmp(myargv[1], REDIRECT_OUT_APPEND_SYMBOL) == 0)
             )) {
         path = (char *) PATH_TO_HOME;                               /** in any unusual situation - just go home */
     }
