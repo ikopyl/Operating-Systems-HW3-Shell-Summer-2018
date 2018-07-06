@@ -79,6 +79,7 @@ void check_for_errors_gracefully(ssize_t, const char *);
 
 char is_background_process(char **, size_t *);
 void expand_home_path(char **, const size_t *);
+void parse_redirects(char **, size_t *);
 
 void builtin_cd(char **, const size_t *);
 void builtin_pwd();
@@ -141,23 +142,9 @@ int repl()
         /** should precede the redirects parsing*/
         expand_home_path(myargv, &myargc);
 
-
         /** redirects parsing starts here */
-        if (strip_myargv(myargv, &myargc, REDIRECT_OUT_TRUNC_SYMBOL)) {
-            REDIRECT_OUT_TRUNC_DETECTED = 1;
-            OUTFILE_PATH = PATH_TO_FILE;
-            PATH_TO_FILE = NULL;
-        }
-        if (strip_myargv(myargv, &myargc, REDIRECT_OUT_APPEND_SYMBOL)) {
-            REDIRECT_OUT_APPEND_DETECTED = 1;
-            OUTFILE_PATH = PATH_TO_FILE;
-            PATH_TO_FILE = NULL;
-        }
-        if (strip_myargv(myargv, &myargc, REDIRECT_IN_SYMBOL)) {
-            REDIRECT_IN_DETECTED = 1;
-            INFILE_PATH = PATH_TO_FILE;
-            PATH_TO_FILE = NULL;
-        }
+        parse_redirects(myargv, &myargc);
+
 
         // TO DO: built-in pwd should support out-redirect
 
@@ -307,6 +294,25 @@ char is_background_process(char ** myargv, size_t *myargc)
         return 1;
     }
     return 0;
+}
+
+void parse_redirects(char ** myargv, size_t * myargc)
+{
+    if (strip_myargv(myargv, myargc, REDIRECT_OUT_TRUNC_SYMBOL)) {
+        REDIRECT_OUT_TRUNC_DETECTED = 1;
+        OUTFILE_PATH = PATH_TO_FILE;
+        PATH_TO_FILE = NULL;
+    }
+    if (strip_myargv(myargv, myargc, REDIRECT_OUT_APPEND_SYMBOL)) {
+        REDIRECT_OUT_APPEND_DETECTED = 1;
+        OUTFILE_PATH = PATH_TO_FILE;
+        PATH_TO_FILE = NULL;
+    }
+    if (strip_myargv(myargv, myargc, REDIRECT_IN_SYMBOL)) {
+        REDIRECT_IN_DETECTED = 1;
+        INFILE_PATH = PATH_TO_FILE;
+        PATH_TO_FILE = NULL;
+    }
 }
 
 void builtin_cd(char ** myargv, const size_t * myargc)
