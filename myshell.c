@@ -181,22 +181,25 @@ int repl()
 
 int open_to_read(const char * path)
 {
+//    printf("Open to read from: %s\n", path);
     int fd = open(path, O_RDONLY);
-    check_for_errors_gracefully(fd, "Failed to open a file ");
+    check_for_errors_gracefully(fd, "Failed to open a file to read from ");
     return fd;
 }
 
 int open_to_append_write(const char * path)
 {
+//    printf("Open to write to (APPEND): %s\n", path);
     int fd = open(path, O_CREAT|O_WRONLY|O_APPEND,  S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
-    check_for_errors_gracefully(fd, "Failed to open a file ");
+    check_for_errors_gracefully(fd, "Failed to open a file to write to (APPEND) ");
     return fd;
 }
 
 int open_to_trunc_write(const char * path)
 {
+//    printf("Open to write to (TRUNCATE): %s\n", path);
     int fd = open(path, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
-    check_for_errors_gracefully(fd, "Failed to open a file ");
+    check_for_errors_gracefully(fd, "Failed to open a file to write to (TRUNCATE) ");
     return fd;
 }
 
@@ -330,7 +333,7 @@ ssize_t strip_myargv(char ** myargv, size_t * myargc, const char * search_item)
                 PATH_TO_FILE = myargv[i+1];
             }
             myargv[i] = '\0';
-            *myargc = (size_t) (i - 1);
+            *myargc = (size_t) i;
 
             return i;
         }
