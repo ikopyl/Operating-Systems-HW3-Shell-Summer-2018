@@ -25,6 +25,11 @@
 #define BUILTIN_PWD "pwd"
 #define BUILTIN_EXIT "exit"
 
+#define REDIRECT_IN "<"
+#define REDIRECT_OUT ">"
+#define REDIRECT_OUT_APPEND ">>"
+#define BACKGROUND_PROCESS_SYMBOL "&"
+
 #define HOME_SHORTCUT "~"
 #define OLDPWD_SHORTCUT "-"
 
@@ -65,7 +70,7 @@ void check_for_errors_gracefully(ssize_t, const char *);
 char is_background_process(char **, size_t *);
 void expand_home_path(char **, const size_t *);
 
-void builtin_cd(char **);
+void builtin_cd(char **, const size_t *);
 void builtin_pwd();
 
 char builtin_found_and_executed(char **, const size_t *);
@@ -122,7 +127,11 @@ int repl()
         myargv[myargc] = '\0';
         BACKGROUND_PROCESS = is_background_process(myargv, &myargc);
 
+        /** a check for redirects starts here */
+
         expand_home_path(myargv, &myargc);
+
+        // TO DO: built-in pwd should support out-redirect
 
         /** code for handling builtins starts here: */
         if (builtin_found_and_executed(myargv, &myargc))
@@ -173,7 +182,7 @@ char builtin_found_and_executed(char **myargv, const size_t * myargc)
         exit(EXIT_SUCCESS);
 
     if (strcmp(myargv[0], BUILTIN_CD) == 0) {
-        builtin_cd(myargv);
+        builtin_cd(myargv, myargc);
         return 1;
     }
 
@@ -198,7 +207,7 @@ void execute_process(char ** myargv, size_t * myargc)
         if (BACKGROUND_PROCESS)
             setpgid(pid, 0);
 
-        status = execvp(myargv[0], myargv);
+        execvp(myargv[0], myargv);
         err_exit("Execvp failed...");
     }
     else if (pid > 0)
@@ -236,7 +245,7 @@ void expand_home_path(char ** myargv, const size_t * myargc)
 
 char is_background_process(char ** myargv, size_t *myargc)
 {
-    if (strcmp(myargv[*myargc - 1], "&") == 0) {
+    if (strcmp(myargv[*myargc - 1], BACKGROUND_PROCESS_SYMBOL) == 0) {
         myargv[*myargc - 1] = '\0';
         *myargc -= 1;
         return 1;
@@ -244,13 +253,20 @@ char is_background_process(char ** myargv, size_t *myargc)
     return 0;
 }
 
-void builtin_cd(char ** myargv)
+void builtin_cd(char ** myargv, const size_t * myargc)
 {
     CURRENT_WORKING_DIRECTORY = getcwd(CURRENT_WORKING_DIRECTORY, PATH_MAX);
     char * path = 0;
 
     if (strcmp(myargv[1], HOME_SHORTCUT) == 0)
         path = (char *) PATH_TO_HOME;
+    else if (*myargc > 2 &&                                         /** bash also does not support redirects for cd */
+            ((strcmp(myargv[1], REDIRECT_IN) == 0)
+             || (strcmp(myargv[1], REDIRECT_OUT) == 0)
+             || (strcmp(myargv[1], REDIRECT_OUT_APPEND) == 0)
+            )) {
+        path = (char *) PATH_TO_HOME;                               /** in any unusual situation - just go home */
+    }
     else if (strcmp(myargv[1], OLDPWD_SHORTCUT) == 0)
         path = getenv(ENV_VAR_OLDPWD);
     else if (myargv[1][0] == ENV_VAR_CHAR_RECOGNIZER)
