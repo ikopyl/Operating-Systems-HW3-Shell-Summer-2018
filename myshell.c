@@ -163,7 +163,6 @@ int repl()
 //        }
 
 
-        // TO DO: built-in pwd should support out-redirect
         /** code for handling builtins starts here: */
         if (builtin_found_and_executed(myargv, &myargc))
             continue;
@@ -219,14 +218,7 @@ char builtin_found_and_executed(char **myargv, const size_t * myargc)
     }
 
     if (strcmp(myargv[0], BUILTIN_PWD) == 0) {
-
-        // ADD FUNC CALLS
-        int stdin_backup = dup(STDIN_FILENO);
-        int stdout_backup = dup(STDOUT_FILENO);
-
-        enable_redirects();
         builtin_pwd();
-        disable_redirects(&stdin_backup, &stdout_backup);
         return 1;
     }
 
@@ -420,11 +412,17 @@ void builtin_cd(char ** myargv, const size_t * myargc)
 
 void builtin_pwd()
 {
+    int stdin_backup = dup(STDIN_FILENO);
+    int stdout_backup = dup(STDOUT_FILENO);
+    enable_redirects();
+
     CURRENT_WORKING_DIRECTORY = getcwd(CURRENT_WORKING_DIRECTORY, PATH_MAX);
     ssize_t bytes_written = write(STDOUT_FILENO, CURRENT_WORKING_DIRECTORY, strlen(CURRENT_WORKING_DIRECTORY));
     check_for_errors_gracefully(bytes_written, "Write error...");
     bytes_written = write(STDOUT_FILENO, "\n", 1);
     check_for_errors_gracefully(bytes_written, "Write error...");
+
+    disable_redirects(&stdin_backup, &stdout_backup);
 }
 
 size_t tokenize_input(char * buf, char * delimiter, char ** myargv, size_t myargc)
