@@ -146,6 +146,13 @@ int repl()
         parse_redirects(myargv, &myargc);
 
 
+        /** next 4 lines - DEBUG INFO */
+//        size_t position = 0;
+//        while (myargv[position]) {
+//            printf("%s\n", myargv[position++]);
+//        }
+
+
         // TO DO: built-in pwd should support out-redirect
 
         /** code for handling builtins starts here: */
@@ -218,6 +225,19 @@ char builtin_found_and_executed(char **myargv, const size_t * myargc)
 void execute_process(char ** myargv, size_t * myargc)
 {
     int status = 0;
+
+
+    if (REDIRECT_IN_DETECTED)
+        printf("REDIRECT_IN_DETECTED\n");
+
+    if (REDIRECT_OUT_TRUNC_DETECTED)
+        printf("REDIRECT_OUT_TRUNC_DETECTED\n");
+
+    if (REDIRECT_OUT_APPEND_DETECTED)
+        printf("REDIRECT_OUT_APPEND_DETECTED\n");
+
+
+
     pid_t pid = fork();
     printf("[process %d has started.]\n", pid);
     check_for_errors_gracefully(pid, "Fork failed...");
@@ -227,6 +247,7 @@ void execute_process(char ** myargv, size_t * myargc)
         /** moving a background child to another process group */
         if (BACKGROUND_PROCESS)
             setpgid(pid, 0);
+
 
         execvp(myargv[0], myargv);
         err_exit("Execvp failed...");
@@ -270,7 +291,7 @@ void expand_home_path(char ** myargv, const size_t * myargc)
  * It replaces the found character with \0 and decrements myargc accordingly. */
 ssize_t strip_myargv(char ** myargv, size_t * myargc, const char * search_item)
 {
-    for (int i = (int) (*myargc - 1); i >= 0; i--)
+    for (int i = (int) (*myargc - 1); i > 0; i--)
     {
         if (strcmp((const char *) myargv[i], search_item) == 0)
         {
@@ -283,7 +304,7 @@ ssize_t strip_myargv(char ** myargv, size_t * myargc, const char * search_item)
             return i;
         }
     }
-    return -1;
+    return 0;
 }
 
 char is_background_process(char ** myargv, size_t *myargc)
