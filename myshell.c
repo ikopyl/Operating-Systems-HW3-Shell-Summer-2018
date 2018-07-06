@@ -26,7 +26,7 @@
 #define BUILTIN_EXIT "exit"
 
 #define REDIRECT_IN_SYMBOL "<"
-#define REDIRECT_OUT_SYMBOL ">"
+#define REDIRECT_OUT_TRUNC_SYMBOL ">"
 #define REDIRECT_OUT_APPEND_SYMBOL ">>"
 #define BACKGROUND_PROCESS_SYMBOL "&"
 
@@ -50,8 +50,9 @@ static size_t MAX_ITEMS_ALLOWED;
 static char * CURRENT_WORKING_DIRECTORY;
 static char BACKGROUND_PROCESS;
 
-static char REDIRECT_INPUT_DETECTED;
-static char REDIRECT_OUTPUT_DETECTED;
+static char REDIRECT_IN_DETECTED;
+static char REDIRECT_OUT_TRUNC_DETECTED;
+static char REDIRECT_OUT_APPEND_DETECTED;
 
 static char * INFILE_PATH;
 static char * OUTFILE_PATH;
@@ -102,12 +103,6 @@ int repl()
 
     BACKGROUND_PROCESS = 0;
 
-    REDIRECT_INPUT_DETECTED = 0;
-    REDIRECT_OUTPUT_DETECTED = 0;
-    INFILE_PATH = NULL;
-    OUTFILE_PATH = NULL;
-    PATH_TO_FILE = NULL;
-
     char * delimiter = " \t";
 
     char * buf = NULL;
@@ -143,21 +138,29 @@ int repl()
         myargv[myargc] = '\0';
         BACKGROUND_PROCESS = is_background_process(myargv, &myargc);
 
+        /** should precede the redirects parsing*/
+        expand_home_path(myargv, &myargc);
 
-        ssize_t status = 0;
-        /** a check for redirects starts here */
-        if ((status = strip_myargv(myargv, &myargc, REDIRECT_IN_SYMBOL))) {
 
-            printf("STRIP_MYARGV STATUS: %zu\n", status);
-            printf("PATH_TO_FILE: %s\n", PATH_TO_FILE);
-            printf("myargc = %zu\n", myargc);
-            printf("myargv: \n");
-            for (int i = 0; i < myargc; i++)
-                printf("%s ", myargv[i]);
+        /** redirects parsing starts here */
+        if (strip_myargv(myargv, &myargc, REDIRECT_IN_SYMBOL)) {
+            REDIRECT_IN_DETECTED = 1;
+            INFILE_PATH = PATH_TO_FILE;
+            PATH_TO_FILE = NULL;
         }
 
+        if (strip_myargv(myargv, &myargc, REDIRECT_OUT_TRUNC_SYMBOL)) {
+            REDIRECT_OUT_TRUNC_DETECTED = 1;
+            OUTFILE_PATH = PATH_TO_FILE;
+            PATH_TO_FILE = NULL;
+        }
 
-        expand_home_path(myargv, &myargc);
+        if (strip_myargv(myargv, &myargc, REDIRECT_OUT_APPEND_SYMBOL)) {
+            REDIRECT_OUT_APPEND_DETECTED = 1;
+            OUTFILE_PATH = PATH_TO_FILE;
+            PATH_TO_FILE = NULL;
+        }
+
 
         // TO DO: built-in pwd should support out-redirect
 
@@ -167,6 +170,12 @@ int repl()
 
         /** code for handling processes starts here: */
         execute_process(myargv, &myargc);
+
+
+        /** cleaning up: */
+        REDIRECT_IN_DETECTED = 0;
+        REDIRECT_OUT_TRUNC_DETECTED = 0;
+        REDIRECT_OUT_APPEND_DETECTED = 0;
 
         free(buf);
         free(myargv);
@@ -312,7 +321,7 @@ void builtin_cd(char ** myargv, const size_t * myargc)
         path = (char *) PATH_TO_HOME;
     else if (*myargc > 2 &&                                         /** bash also does not support redirects for cd */
             ((strcmp(myargv[1], REDIRECT_IN_SYMBOL) == 0)
-             || (strcmp(myargv[1], REDIRECT_OUT_SYMBOL) == 0)
+             || (strcmp(myargv[1], REDIRECT_OUT_TRUNC_SYMBOL) == 0)
              || (strcmp(myargv[1], REDIRECT_OUT_APPEND_SYMBOL) == 0)
             )) {
         path = (char *) PATH_TO_HOME;                               /** in any unusual situation - just go home */
