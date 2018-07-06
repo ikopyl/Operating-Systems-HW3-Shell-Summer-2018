@@ -143,24 +143,21 @@ int repl()
 
 
         /** redirects parsing starts here */
-        if (strip_myargv(myargv, &myargc, REDIRECT_IN_SYMBOL)) {
-            REDIRECT_IN_DETECTED = 1;
-            INFILE_PATH = PATH_TO_FILE;
-            PATH_TO_FILE = NULL;
-        }
-
         if (strip_myargv(myargv, &myargc, REDIRECT_OUT_TRUNC_SYMBOL)) {
             REDIRECT_OUT_TRUNC_DETECTED = 1;
             OUTFILE_PATH = PATH_TO_FILE;
             PATH_TO_FILE = NULL;
         }
-
         if (strip_myargv(myargv, &myargc, REDIRECT_OUT_APPEND_SYMBOL)) {
             REDIRECT_OUT_APPEND_DETECTED = 1;
             OUTFILE_PATH = PATH_TO_FILE;
             PATH_TO_FILE = NULL;
         }
-
+        if (strip_myargv(myargv, &myargc, REDIRECT_IN_SYMBOL)) {
+            REDIRECT_IN_DETECTED = 1;
+            INFILE_PATH = PATH_TO_FILE;
+            PATH_TO_FILE = NULL;
+        }
 
         // TO DO: built-in pwd should support out-redirect
 
