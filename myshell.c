@@ -68,6 +68,7 @@ void expand_home_path(char **, const size_t *);
 void builtin_cd(char **);
 void builtin_pwd();
 
+char builtin_found_and_executed(char **, const size_t *);
 void execute_process(char **, size_t *);
 
 int main(int* argc, char** argv)
@@ -120,19 +121,8 @@ int repl()
         expand_home_path(myargv, &myargc);
 
         /** code for handling builtins starts here: */
-        if (myargc == 1 && strcmp(myargv[0], BUILTIN_EXIT) == 0)
-            return EXIT_SUCCESS;
-
-        if (strcmp(myargv[0], BUILTIN_CD) == 0) {
-            builtin_cd(myargv);
+        if (builtin_found_and_executed(myargv, &myargc))
             continue;
-        }
-
-        if (strcmp(myargv[0], BUILTIN_PWD) == 0) {
-            builtin_pwd();
-            continue;
-        }
-
 
 
         /** code for handling processes starts here: */
@@ -147,6 +137,24 @@ int repl()
     } while (bytes_read > 0);           /** loop can also be terminated by EOF (Ctrl + D) */
 
     return EXIT_SUCCESS;
+}
+
+char builtin_found_and_executed(char **myargv, const size_t * myargc)
+{
+    if (*myargc == 1 && strcmp(myargv[0], BUILTIN_EXIT) == 0)
+        exit(EXIT_SUCCESS);
+
+    if (strcmp(myargv[0], BUILTIN_CD) == 0) {
+        builtin_cd(myargv);
+        return 1;
+    }
+
+    if (strcmp(myargv[0], BUILTIN_PWD) == 0) {
+        builtin_pwd();
+        return 1;
+    }
+
+    return 0;
 }
 
 void execute_process(char ** myargv, size_t * myargc)
