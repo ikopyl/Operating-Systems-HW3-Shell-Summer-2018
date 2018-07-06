@@ -79,7 +79,6 @@ int main(int* argc, char** argv)
 int repl()
 {
     PATH_TO_HOME = getenv(ENV_VAR_HOME);
-
     CURRENT_WORKING_DIRECTORY = NULL;
     BACKGROUND_PROCESS = 0;
 
@@ -124,10 +123,8 @@ int repl()
         if (builtin_found_and_executed(myargv, &myargc))
             continue;
 
-
         /** code for handling processes starts here: */
         execute_process(myargv, &myargc);
-
 
         free(buf);
         free(myargv);
@@ -215,7 +212,6 @@ char is_background_process(char ** myargv, size_t *myargc)
     }
     return 0;
 }
-
 
 void builtin_cd(char ** myargv)
 {
