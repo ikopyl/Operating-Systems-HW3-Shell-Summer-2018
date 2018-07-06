@@ -68,6 +68,8 @@ void expand_home_path(char **, const size_t *);
 void builtin_cd(char **);
 void builtin_pwd();
 
+void execute_process(char **, size_t *);
+
 int main(int* argc, char** argv)
 {
     return repl();
@@ -134,38 +136,7 @@ int repl()
 
 
         /** code for handling processes starts here: */
-        int status = 0;
-        pid_t pid = fork();
-        printf("[process %d has started.]\n", pid);
-        check_for_errors_gracefully(pid, "Fork failed...");
-
-        if (pid == 0)
-        {
-            /** moving a background child to another process group */
-            if (BACKGROUND_PROCESS)
-                setpgid(pid, 0);
-
-            status = execvp(myargv[0], myargv);
-            err_exit("Execvp failed...");
-        }
-        else if (pid > 0)
-        {
-            if (!BACKGROUND_PROCESS)
-            {
-                setpgid(pid, getpgid(pid));
-
-                /** 0: wait for any child process whose group id is equal to that of the calling process */
-                if ((pid = waitpid(0, &status, WUNTRACED)))
-                    if (WIFEXITED(status))
-                        printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
-            }
-
-            /** -1: wait for any child process */
-            if ((pid = waitpid(-1, &status, WNOHANG)) > 0)
-                if (WIFEXITED(status))
-                    printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
-        }
-
+        execute_process(myargv, &myargc);
 
 
         free(buf);
@@ -176,6 +147,41 @@ int repl()
     } while (bytes_read > 0);           /** loop can also be terminated by EOF (Ctrl + D) */
 
     return EXIT_SUCCESS;
+}
+
+void execute_process(char ** myargv, size_t * myargc)
+{
+    int status = 0;
+    pid_t pid = fork();
+    printf("[process %d has started.]\n", pid);
+    check_for_errors_gracefully(pid, "Fork failed...");
+
+    if (pid == 0)
+    {
+        /** moving a background child to another process group */
+        if (BACKGROUND_PROCESS)
+            setpgid(pid, 0);
+
+        status = execvp(myargv[0], myargv);
+        err_exit("Execvp failed...");
+    }
+    else if (pid > 0)
+    {
+        if (!BACKGROUND_PROCESS)
+        {
+            setpgid(pid, getpgid(pid));
+
+            /** 0: wait for any child process whose group id is equal to that of the calling process */
+            if ((pid = waitpid(0, &status, WUNTRACED)))
+                if (WIFEXITED(status))
+                    printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
+        }
+
+        /** -1: wait for any child process */
+        if ((pid = waitpid(-1, &status, WNOHANG)) > 0)
+            if (WIFEXITED(status))
+                printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
+    }
 }
 
 void expand_home_path(char ** myargv, const size_t * myargc)
