@@ -56,6 +56,8 @@ int repl();
 void display_prompt();
 
 ssize_t strip(char *, char, ssize_t);
+ssize_t strip_myargv(char **, size_t *, const char *, char *);
+
 ssize_t get_user_input(char *);
 size_t tokenize_input(char *, char *, char **, size_t);
 
@@ -241,6 +243,25 @@ void expand_home_path(char ** myargv, const size_t * myargc)
             myargv[i] = expanded_path;                                  /** myargv[i] now stores a pointer to expanded_path */
         }
     }
+}
+
+ssize_t strip_myargv(char ** myargv, size_t * myargc, const char * search_item, char * path_to_file)
+{
+//    ssize_t position = -1;
+    for (size_t i = *myargc - 1; i >= 0; i--)
+    {
+        if (strcmp(myargv[i], search_item) == 0)
+        {
+            if (*myargc - i > 1) {
+               path_to_file = (char *) myargc[i + 1];
+            }
+            myargv[i] = '\0';
+            *myargc = i - 1;
+
+            return i;
+        }
+    }
+    return -1;
 }
 
 char is_background_process(char ** myargv, size_t *myargc)
