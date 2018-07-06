@@ -220,10 +220,13 @@ char builtin_found_and_executed(char **myargv, const size_t * myargc)
 
     if (strcmp(myargv[0], BUILTIN_PWD) == 0) {
 
-
         // ADD FUNC CALLS
+        int stdin_backup = dup(STDIN_FILENO);
+        int stdout_backup = dup(STDOUT_FILENO);
 
+        enable_redirects();
         builtin_pwd();
+        disable_redirects(&stdin_backup, &stdout_backup);
         return 1;
     }
 
@@ -276,7 +279,7 @@ void execute_process(char ** myargv, size_t * myargc)
     }
 
     disable_redirects(&stdin_backup, &stdout_backup);
-    
+
 }
 
 void expand_home_path(char ** myargv, const size_t * myargc)
