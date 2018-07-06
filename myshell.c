@@ -71,6 +71,11 @@ void builtin_pwd();
 char builtin_found_and_executed(char **, const size_t *);
 void execute_process(char **, size_t *);
 
+int open_to_read(const char *);
+int open_to_append_write(const char *);
+int open_to_truncate_write(const char *);
+void close_fd(int *);
+
 int main(int* argc, char** argv)
 {
     return repl();
@@ -134,6 +139,32 @@ int repl()
     } while (bytes_read > 0);           /** loop can also be terminated by EOF (Ctrl + D) */
 
     return EXIT_SUCCESS;
+}
+
+int open_to_read(const char * path)
+{
+    int fd = open(path, O_RDONLY);
+    check_for_errors_gracefully(fd, "File open error...");
+    return fd;
+}
+
+int open_to_append_write(const char * path)
+{
+    int fd = open(path, O_CREAT|O_WRONLY|O_APPEND, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
+    check_for_errors_gracefully(fd, "File open error...");
+    return fd;
+}
+
+int open_to_truncate_write(const char * path)
+{
+    int fd = open(path, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
+    check_for_errors_gracefully(fd, "File open error...");
+    return fd;
+}
+
+void close_fd(int * fd)
+{
+    check_for_errors_gracefully(close(*fd), "Failed to close the file descriptor...");
 }
 
 char builtin_found_and_executed(char **myargv, const size_t * myargc)
