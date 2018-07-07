@@ -91,6 +91,9 @@ void expand_home_path(char **, const size_t *);
 void parse_redirects(char **, size_t *);
 
 void enable_redirects();
+void enable_input_redirect();
+void enable_output_redirects();
+
 void disable_redirects(const int *, const int *);
 
 void builtin_cd(char **, const size_t *);
@@ -286,9 +289,14 @@ void execute_process(char ** myargv, size_t * myargc)
         if (pipe_detected) {
             close(pipe_fd[0]);                          /** closing unused pipe file descriptor */
             dup2(pipe_fd[1], STDOUT_FILENO);            /** connecting output of pid1 to input of pid2 */
+
+            enable_input_redirect();                    /** enable STDIN redirect; should only be applied to the first command */
+        }
+        else
+        {
+            enable_redirects();                         /** enable any redirects if available */
         }
 
-        enable_redirects();                         /** enable any redirects if available */
 
         /** moving a background child to another process group */
         if (BACKGROUND_PROCESS)
@@ -308,6 +316,8 @@ void execute_process(char ** myargv, size_t * myargc)
             {
                 close(pipe_fd[1]);                  /** closing the unused pipe file descriptor */
                 dup2(pipe_fd[0], STDIN_FILENO);     /** connecting input of pid2 to output of pid1 */
+
+                enable_output_redirects();          /** enable STDOUT redirects; should only be applied to the last command */
 
                 execvp(tail_myargv[0], tail_myargv);
                 perror("Execvp of second child failed...");
@@ -438,11 +448,20 @@ void parse_redirects(char ** myargv, size_t * myargc)
 
 void enable_redirects()
 {
+    enable_input_redirect();
+    enable_output_redirects();
+}
+
+void enable_input_redirect()
+{
     if (REDIRECT_IN_DETECTED) {
         IN_FD = open_to_read(INFILE_PATH);
         dup2(IN_FD, STDIN_FILENO);
     }
+}
 
+void enable_output_redirects()
+{
     if (REDIRECT_OUT_TRUNC_DETECTED) {
         OUT_FD = open_to_trunc_write(OUTFILE_PATH);
         dup2(OUT_FD, STDOUT_FILENO);
