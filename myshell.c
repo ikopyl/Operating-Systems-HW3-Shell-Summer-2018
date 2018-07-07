@@ -55,8 +55,6 @@ static char REDIRECT_IN_DETECTED;
 static char REDIRECT_OUT_TRUNC_DETECTED;
 static char REDIRECT_OUT_APPEND_DETECTED;
 
-static char PIPE_DETECTED;
-
 static char * INFILE_PATH;
 static char * OUTFILE_PATH;
 static char * PATH_TO_FILE;
@@ -70,7 +68,6 @@ int repl();
 void display_prompt();
 
 ssize_t strip(char *, char, ssize_t);
-//ssize_t strip_myargv(char **, size_t *, const char *);
 size_t strip_myargv(char **, size_t *, const char *);
 
 size_t strip_pipes_myargv(char**, size_t *, char ***, size_t *);
@@ -163,36 +160,6 @@ int repl()
 
         /** redirects parsing starts here */
         parse_redirects(myargv, &myargc);
-
-
-
-//        char ** tail_myargv = NULL;
-//        size_t tail_myargc = 0;
-//        if (strip_pipes_myargv(myargv, &myargc, &tail_myargv, &tail_myargc))
-//        {
-//            PIPE_DETECTED = 1;
-
-            /** DEBUG LOGS */
-//            printf("Returned value of tail_myargc: %zu\n", tail_myargc);
-//            printf("Returned value of myargc: %zu\n", myargc);
-//
-//            /** next 4 x 2 lines - DEBUG INFO */
-//            printf("Head: \n");
-//            size_t position = 0;
-//            while (myargv[position]) {
-//                printf("%s\n", myargv[position++]);
-//            }
-//
-//            printf("Tail: \n");
-//            position = 0;
-//            while (tail_myargv[position]) {
-//                printf("%s\n", tail_myargv[position++]);
-//            }
-//            printf("--------------------------------------------------\n");
-
-//        }
-
-
 
         /** code for handling builtins starts here: */
         if (builtin_found_and_executed(myargv, &myargc))
@@ -397,7 +364,6 @@ size_t strip_pipes_myargv(char** myargv, size_t * myargc, char *** tail_myargv, 
  * to the value of the next token in the myargv array after the matched character (if it exists).
  * It replaces the found character with \0 and decrements myargc accordingly. */
 size_t strip_myargv(char ** myargv, size_t * myargc, const char * search_item)
-//ssize_t strip_myargv(char ** myargv, size_t * myargc, const char * search_item)
 {
     for (int i = (int) (*myargc - 1); i > 0; i--)
     {
