@@ -29,6 +29,7 @@
 #define REDIRECT_OUT_TRUNC_SYMBOL ">"
 #define REDIRECT_OUT_APPEND_SYMBOL ">>"
 #define BACKGROUND_PROCESS_SYMBOL "&"
+#define PIPE_SYMBOL "|"
 
 #define HOME_SHORTCUT "~"
 #define OLDPWD_SHORTCUT "-"
@@ -67,7 +68,10 @@ int repl();
 void display_prompt();
 
 ssize_t strip(char *, char, ssize_t);
-ssize_t strip_myargv(char **, size_t *, const char *);
+//ssize_t strip_myargv(char **, size_t *, const char *);
+size_t strip_myargv(char **, size_t *, const char *);
+
+size_t strip_pipes_myargv(char**, size_t *, char ***, size_t *);
 
 ssize_t get_user_input(char *);
 size_t tokenize_input(char *, char *, char **, size_t);
@@ -156,11 +160,33 @@ int repl()
         parse_redirects(myargv, &myargc);
 
 
-        /** next 4 lines - DEBUG INFO */
-//        size_t position = 0;
-//        while (myargv[position]) {
-//            printf("%s\n", myargv[position++]);
-//        }
+
+        char ** tail_myargv = NULL;
+        size_t tail_myargc = 0;
+        if (strip_pipes_myargv(myargv, &myargc, &tail_myargv, &tail_myargc))
+        {
+
+            printf("Returned value of tail_myargc: %zu\n", tail_myargc);
+            printf("Returned value of myargc: %zu\n", myargc);
+            printf("++++++++++++++++++++++++++++++++++++++++++++++++++\n");
+
+            /** next 4 x 2 lines - DEBUG INFO */
+            printf("Head: \n");
+            size_t position = 0;
+            while (myargv[position]) {
+                printf("%s\n", myargv[position++]);
+            }
+
+            printf("Tail: \n");
+            position = 0;
+            while (tail_myargv[position]) {
+                printf("%s\n", tail_myargv[position++]);
+            }
+
+            printf("--------------------------------------------------\n");
+
+        }
+
 
 
         /** code for handling builtins starts here: */
@@ -288,11 +314,31 @@ void expand_home_path(char ** myargv, const size_t * myargc)
     }
 }
 
+
+size_t strip_pipes_myargv(char** myargv, size_t * myargc, char *** tail_myargv, size_t * tail_argc)
+{
+    size_t position = 0;
+    while ((strip_myargv(myargv, myargc, PIPE_SYMBOL)))
+    {
+        *tail_myargv = &myargv[*myargc + 1];
+
+        position = *myargc + 1;
+        while(myargv[position]) {
+//            printf("%s\n", myargv[position++]);
+            position++;
+        }
+        *tail_argc = position - 1 - *myargc;
+    }
+
+    return position;
+}
+
 /** Function for parsing the redirect characters. Returns the position of the
  * first matched char * of 1 character from the end of myargv. Sets PATH_TO_FILE
  * to the value of the next token in the myargv array after the matched character (if it exists).
  * It replaces the found character with \0 and decrements myargc accordingly. */
-ssize_t strip_myargv(char ** myargv, size_t * myargc, const char * search_item)
+size_t strip_myargv(char ** myargv, size_t * myargc, const char * search_item)
+//ssize_t strip_myargv(char ** myargv, size_t * myargc, const char * search_item)
 {
     for (int i = (int) (*myargc - 1); i > 0; i--)
     {
