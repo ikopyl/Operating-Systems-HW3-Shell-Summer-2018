@@ -1,9 +1,9 @@
 /****************************************************************
- * Name        :                                                *
+ * Name        : Ilya Kopyl                                     *
  * Class       : CSC 415                                        *
- * Date        :                                                *
- * Description :  Writting a simple bash shell program          *
- * 	          that will execute simple commands. The main   *
+ * Date        : 07/06/2018                                     *
+ * Description :  Writing a simple bash shell program           *
+ * 	              that will execute simple commands. The main   *
  *                goal of the assignment is working with        *
  *                fork, pipes and exec system calls.            *
  ****************************************************************/
@@ -48,7 +48,7 @@
 #define ARGVMAX 32
 
 static size_t MAX_ITEMS_ALLOWED;
-static char * CURRENT_WORKING_DIRECTORY;
+static char * CWD;
 static char BACKGROUND_PROCESS;
 
 static char REDIRECT_IN_DETECTED;
@@ -62,7 +62,7 @@ static char * PATH_TO_FILE;
 static int IN_FD;
 static int OUT_FD;
 
-static const char * PATH_TO_HOME;
+static const char * HOME_PATH;
 
 int repl();
 void display_prompt();
@@ -83,8 +83,10 @@ void verify_memory_allocation(const char *);
 void check_for_errors_and_terminate(ssize_t, const char *);
 void check_for_errors_gracefully(ssize_t, const char *);
 
+void expand_home_directory_in_path(char **, const size_t *);
+char * generate_prompt(char *);
+
 char is_background_process(char **, size_t *);
-void expand_home_path(char **, const size_t *);
 void parse_redirects(char **, size_t *);
 
 void enable_redirects();
@@ -112,8 +114,8 @@ int main(int* argc, char** argv)
 
 int repl()
 {
-    PATH_TO_HOME = getenv(ENV_VAR_HOME);
-    CURRENT_WORKING_DIRECTORY = NULL;
+    HOME_PATH = getenv(ENV_VAR_HOME);
+    CWD = NULL;
 
     IN_FD = 0;
     OUT_FD = 1;
@@ -156,7 +158,7 @@ int repl()
         BACKGROUND_PROCESS = is_background_process(myargv, &myargc);
 
         /** should precede the redirects parsing*/
-        expand_home_path(myargv, &myargc);
+        expand_home_directory_in_path(myargv, &myargc);
 
         /** redirects parsing starts here */
         parse_redirects(myargv, &myargc);
@@ -326,18 +328,29 @@ void execute_process(char ** myargv, size_t * myargc)
 
 }
 
-void expand_home_path(char ** myargv, const size_t * myargc)
+void expand_home_directory_in_path(char ** myargv, const size_t * myargc)
 {
     for (int i = 1; i < *myargc; i++) {
         if (myargv[i][0] == HOME_SHORTCUT[0])
         {
             char * expanded_path = calloc(PATH_MAX, sizeof(char));
-            expanded_path = memcpy(expanded_path, PATH_TO_HOME, strlen(PATH_TO_HOME));
+            expanded_path = memcpy(expanded_path, HOME_PATH, strlen(HOME_PATH));
 
             expanded_path = strcat(expanded_path, myargv[i] + 1);       /** leaving '~' behind the scope */
             myargv[i] = expanded_path;                                  /** myargv[i] now stores a pointer to expanded_path */
         }
     }
+}
+
+char * generate_prompt(char * path)
+{
+    char * new_prompt = calloc(PATH_MAX, sizeof(char));
+    new_prompt[0] = '~';
+
+    memcpy(new_prompt + 1, path + strlen(HOME_PATH), strlen(path) - strlen(HOME_PATH));
+    new_prompt = strcat(new_prompt, " $ \0");
+
+    return new_prompt;
 }
 
 
@@ -462,17 +475,17 @@ void disable_redirects(const int * stdin_backup, const int * stdout_backup)
 
 void builtin_cd(char ** myargv, const size_t * myargc)
 {
-    CURRENT_WORKING_DIRECTORY = getcwd(CURRENT_WORKING_DIRECTORY, PATH_MAX);
+    CWD = getcwd(CWD, PATH_MAX);
     char * path = 0;
 
     if (strcmp(myargv[1], HOME_SHORTCUT) == 0)
-        path = (char *) PATH_TO_HOME;
+        path = (char *) HOME_PATH;
     else if (*myargc > 2 &&                                         /** bash also does not support redirects for cd */
             ((strcmp(myargv[1], REDIRECT_IN_SYMBOL) == 0)
              || (strcmp(myargv[1], REDIRECT_OUT_TRUNC_SYMBOL) == 0)
              || (strcmp(myargv[1], REDIRECT_OUT_APPEND_SYMBOL) == 0)
             )) {
-        path = (char *) PATH_TO_HOME;                               /** in any unusual situation - just go home */
+        path = (char *) HOME_PATH;                               /** in any unusual situation - just go home */
     }
     else if (strcmp(myargv[1], OLDPWD_SHORTCUT) == 0)
         path = getenv(ENV_VAR_OLDPWD);
@@ -485,7 +498,7 @@ void builtin_cd(char ** myargv, const size_t * myargc)
     check_for_errors_gracefully(status, myargv[1]);
 
     if (status >= 0) {
-        status = setenv(ENV_VAR_OLDPWD, CURRENT_WORKING_DIRECTORY, 1);
+        status = setenv(ENV_VAR_OLDPWD, CWD, 1);
         check_for_errors_gracefully(status, myargv[1]);
     }
 }
@@ -496,8 +509,8 @@ void builtin_pwd()
     int stdout_backup = dup(STDOUT_FILENO);
     enable_redirects();
 
-    CURRENT_WORKING_DIRECTORY = getcwd(CURRENT_WORKING_DIRECTORY, PATH_MAX);
-    ssize_t bytes_written = write(STDOUT_FILENO, CURRENT_WORKING_DIRECTORY, strlen(CURRENT_WORKING_DIRECTORY));
+    CWD = getcwd(CWD, PATH_MAX);
+    ssize_t bytes_written = write(STDOUT_FILENO, CWD, strlen(CWD));
     check_for_errors_gracefully(bytes_written, "Write error...");
     bytes_written = write(STDOUT_FILENO, "\n", 1);
     check_for_errors_gracefully(bytes_written, "Write error...");
@@ -547,7 +560,10 @@ void reallocate(char ** array, size_t number_of_items)
 
 void display_prompt()
 {
-    ssize_t bytes_written = write(STDOUT_FILENO, PROMPT, PROMPTSIZE);
+    CWD = getcwd(CWD, PATH_MAX);
+    char * new_prompt = generate_prompt(CWD);
+
+    ssize_t bytes_written = write(STDOUT_FILENO, new_prompt, strlen(new_prompt));                   /** dynamic prompt */
     check_for_errors_and_terminate(bytes_written, "Write error...");
 }
 
