@@ -55,6 +55,8 @@ static char REDIRECT_IN_DETECTED;
 static char REDIRECT_OUT_TRUNC_DETECTED;
 static char REDIRECT_OUT_APPEND_DETECTED;
 
+static char PIPE_DETECTED;
+
 static char * INFILE_PATH;
 static char * OUTFILE_PATH;
 static char * PATH_TO_FILE;
@@ -161,31 +163,31 @@ int repl()
 
 
 
-        char ** tail_myargv = NULL;
-        size_t tail_myargc = 0;
-        if (strip_pipes_myargv(myargv, &myargc, &tail_myargv, &tail_myargc))
-        {
+//        char ** tail_myargv = NULL;
+//        size_t tail_myargc = 0;
+//        if (strip_pipes_myargv(myargv, &myargc, &tail_myargv, &tail_myargc))
+//        {
+//            PIPE_DETECTED = 1;
 
-            printf("Returned value of tail_myargc: %zu\n", tail_myargc);
-            printf("Returned value of myargc: %zu\n", myargc);
-            printf("++++++++++++++++++++++++++++++++++++++++++++++++++\n");
+            /** DEBUG LOGS */
+//            printf("Returned value of tail_myargc: %zu\n", tail_myargc);
+//            printf("Returned value of myargc: %zu\n", myargc);
+//
+//            /** next 4 x 2 lines - DEBUG INFO */
+//            printf("Head: \n");
+//            size_t position = 0;
+//            while (myargv[position]) {
+//                printf("%s\n", myargv[position++]);
+//            }
+//
+//            printf("Tail: \n");
+//            position = 0;
+//            while (tail_myargv[position]) {
+//                printf("%s\n", tail_myargv[position++]);
+//            }
+//            printf("--------------------------------------------------\n");
 
-            /** next 4 x 2 lines - DEBUG INFO */
-            printf("Head: \n");
-            size_t position = 0;
-            while (myargv[position]) {
-                printf("%s\n", myargv[position++]);
-            }
-
-            printf("Tail: \n");
-            position = 0;
-            while (tail_myargv[position]) {
-                printf("%s\n", tail_myargv[position++]);
-            }
-
-            printf("--------------------------------------------------\n");
-
-        }
+//        }
 
 
 
@@ -258,40 +260,87 @@ void execute_process(char ** myargv, size_t * myargc)
     int stdout_backup = dup(STDOUT_FILENO);
 
 
-    pid_t pid = fork();
-    printf("[process %d has started.]\n", pid);
-    check_for_errors_gracefully(pid, "Fork failed...");
+    /** pipes detection: */
+    char ** tail_myargv = NULL;
+    size_t tail_myargc = 0;
+    size_t pipe_detected = 0;
 
-    if (pid == 0)
+    if (strip_pipes_myargv(myargv, myargc, &tail_myargv, &tail_myargc))
+        pipe_detected = 1;
+
+
+
+    int pipe_fd[2];                                 /** pipe file descriptor */
+    if (pipe_detected) {
+        status = pipe(pipe_fd);
+        check_for_errors_gracefully(status, "Pipe failed to create");
+    }
+
+    pid_t pid1 = fork();
+//    printf("[process %d has started.]\n", pid1);                            // DEBUG ONLY, DELETE BEFORE RELEASE
+    check_for_errors_gracefully(pid1, "Fork failed...");
+
+
+    if (pid1 == 0)          /** 1st child - head (on LHS from pipe) */
     {
+        if (pipe_detected) {
+            close(pipe_fd[0]);                          /** closing unused pipe file descriptor */
+            dup2(pipe_fd[1], STDOUT_FILENO);            /** connecting output of pid1 to input of pid2 */
+        }
+
+        enable_redirects();                         /** enable any redirects if available */
+
         /** moving a background child to another process group */
         if (BACKGROUND_PROCESS)
-            setpgid(pid, 0);
-
-        enable_redirects();
+            setpgid(pid1, 0);
 
         execvp(myargv[0], myargv);
-        err_exit("Execvp failed...");
+        err_exit("Execvp of first child failed...");
     }
-    else if (pid > 0)
+    else if (pid1 > 0)
     {
+        if (pipe_detected)
+        {
+            int pid2 = fork();
+            check_for_errors_gracefully(pid2, "Fork failed...");
+
+            if (pid2 == 0)
+            {
+                close(pipe_fd[1]);                  /** closing the unused pipe file descriptor */
+                dup2(pipe_fd[0], STDIN_FILENO);     /** connecting input of pid2 to output of pid1 */
+
+                execvp(tail_myargv[0], tail_myargv);
+                perror("Execvp of second child failed...");
+            }
+            else if (pid2 > 0)
+            {
+                close(pipe_fd[0]);
+                close(pipe_fd[1]);
+
+                while(!wait(&status));
+                while(!wait(&status));
+            }
+        }
+
         if (!BACKGROUND_PROCESS)
         {
-            setpgid(pid, getpgid(pid));
+            setpgid(pid1, getpgid(pid1));
 
             /** 0: wait for any child process whose group id is equal to that of the calling process */
-            if ((pid = waitpid(0, &status, WUNTRACED)))
+            if ((pid1 = waitpid(0, &status, WUNTRACED)))
             {
-                if (WIFEXITED(status))
-                    printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
+                if (WIFEXITED(status)) {
+//                    printf("[process %d exited with code %d]\n", pid1, WEXITSTATUS(status));                // DEBUG ONLY
+                }
             }
         }
 
         /** -1: wait for any child process */
-        if ((pid = waitpid(-1, &status, WNOHANG)) > 0)
+        if ((pid1 = waitpid(-1, &status, WNOHANG)) > 0)
         {
-            if (WIFEXITED(status))
-                printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
+            if (WIFEXITED(status)) {
+//                printf("[process %d exited with code %d]\n", pid1, WEXITSTATUS(status));                    // DEBUG ONLY
+            }
         }
 
     }
