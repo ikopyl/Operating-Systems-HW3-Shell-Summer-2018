@@ -29,6 +29,7 @@
 #define REDIRECT_OUT_TRUNC_SYMBOL ">"
 #define REDIRECT_OUT_APPEND_SYMBOL ">>"
 #define BACKGROUND_PROCESS_SYMBOL "&"
+#define PIPE_SYMBOL "|"
 
 #define HOME_SHORTCUT "~"
 #define OLDPWD_SHORTCUT "-"
@@ -67,7 +68,9 @@ int repl();
 void display_prompt();
 
 ssize_t strip(char *, char, ssize_t);
-ssize_t strip_myargv(char **, size_t *, const char *);
+size_t strip_myargv(char **, size_t *, const char *);
+
+size_t strip_pipes_myargv(char**, size_t *, char ***, size_t *);
 
 ssize_t get_user_input(char *);
 size_t tokenize_input(char *, char *, char **, size_t);
@@ -83,6 +86,12 @@ void check_for_errors_gracefully(ssize_t, const char *);
 char is_background_process(char **, size_t *);
 void expand_home_path(char **, const size_t *);
 void parse_redirects(char **, size_t *);
+
+void enable_redirects();
+void enable_input_redirect();
+void enable_output_redirects();
+
+void disable_redirects(const int *, const int *);
 
 void builtin_cd(char **, const size_t *);
 void builtin_pwd();
@@ -152,15 +161,6 @@ int repl()
         /** redirects parsing starts here */
         parse_redirects(myargv, &myargc);
 
-
-        /** next 4 lines - DEBUG INFO */
-//        size_t position = 0;
-//        while (myargv[position]) {
-//            printf("%s\n", myargv[position++]);
-//        }
-
-
-        // TO DO: built-in pwd should support out-redirect
         /** code for handling builtins starts here: */
         if (builtin_found_and_executed(myargv, &myargc))
             continue;
@@ -181,7 +181,6 @@ int repl()
 
 int open_to_read(const char * path)
 {
-//    printf("Open to read from: %s\n", path);
     int fd = open(path, O_RDONLY);
     check_for_errors_gracefully(fd, "Failed to open a file to read from ");
     return fd;
@@ -189,7 +188,6 @@ int open_to_read(const char * path)
 
 int open_to_append_write(const char * path)
 {
-//    printf("Open to write to (APPEND): %s\n", path);
     int fd = open(path, O_CREAT|O_WRONLY|O_APPEND,  S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
     check_for_errors_gracefully(fd, "Failed to open a file to write to (APPEND) ");
     return fd;
@@ -197,7 +195,6 @@ int open_to_append_write(const char * path)
 
 int open_to_trunc_write(const char * path)
 {
-//    printf("Open to write to (TRUNCATE): %s\n", path);
     int fd = open(path, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
     check_for_errors_gracefully(fd, "Failed to open a file to write to (TRUNCATE) ");
     return fd;
@@ -233,75 +230,99 @@ void execute_process(char ** myargv, size_t * myargc)
     int stdout_backup = dup(STDOUT_FILENO);
 
 
-    pid_t pid = fork();
-    printf("[process %d has started.]\n", pid);
-    check_for_errors_gracefully(pid, "Fork failed...");
+    /** pipes detection: */
+    char ** tail_myargv = NULL;
+    size_t tail_myargc = 0;
+    size_t pipe_detected = 0;
 
-    if (pid == 0)
+    if (strip_pipes_myargv(myargv, myargc, &tail_myargv, &tail_myargc))
+        pipe_detected = 1;
+
+
+
+    int pipe_fd[2];                                 /** pipe file descriptor */
+    if (pipe_detected) {
+        status = pipe(pipe_fd);
+        check_for_errors_gracefully(status, "Pipe failed to create");
+    }
+
+    pid_t pid1 = fork();
+//    printf("[process %d has started.]\n", pid1);                            // DEBUG ONLY, DELETE BEFORE RELEASE
+    check_for_errors_gracefully(pid1, "Fork failed...");
+
+
+    if (pid1 == 0)          /** 1st child - head (on LHS from pipe) */
     {
+        if (pipe_detected) {
+            close(pipe_fd[0]);                          /** closing unused pipe file descriptor */
+            dup2(pipe_fd[1], STDOUT_FILENO);            /** connecting output of pid1 to input of pid2 */
+
+            enable_input_redirect();                    /** enable STDIN redirect; should only be applied to the first command */
+        }
+        else
+        {
+            enable_redirects();                         /** enable any redirects if available */
+        }
+
+
         /** moving a background child to another process group */
         if (BACKGROUND_PROCESS)
-            setpgid(pid, 0);
-
-
-        if (REDIRECT_IN_DETECTED) {
-            IN_FD = open_to_read(INFILE_PATH);
-            dup2(IN_FD, STDIN_FILENO);
-        }
-
-        if (REDIRECT_OUT_TRUNC_DETECTED) {
-            OUT_FD = open_to_trunc_write(OUTFILE_PATH);
-            dup2(OUT_FD, STDOUT_FILENO);
-        }
-
-        if (REDIRECT_OUT_APPEND_DETECTED) {
-            OUT_FD = open_to_append_write(OUTFILE_PATH);
-            dup2(OUT_FD, STDOUT_FILENO);
-        }
+            setpgid(pid1, 0);
 
         execvp(myargv[0], myargv);
-        err_exit("Execvp failed...");
+        err_exit("Execvp of first child failed...");
     }
-    else if (pid > 0)
+    else if (pid1 > 0)
     {
+        if (pipe_detected)
+        {
+            int pid2 = fork();
+            check_for_errors_gracefully(pid2, "Fork failed...");
+
+            if (pid2 == 0)
+            {
+                close(pipe_fd[1]);                  /** closing the unused pipe file descriptor */
+                dup2(pipe_fd[0], STDIN_FILENO);     /** connecting input of pid2 to output of pid1 */
+
+                enable_output_redirects();          /** enable STDOUT redirects; should only be applied to the last command */
+
+                execvp(tail_myargv[0], tail_myargv);
+                perror("Execvp of second child failed...");
+            }
+            else if (pid2 > 0)
+            {
+                close(pipe_fd[0]);
+                close(pipe_fd[1]);
+
+                while(!wait(&status));
+                while(!wait(&status));
+            }
+        }
+
         if (!BACKGROUND_PROCESS)
         {
-            setpgid(pid, getpgid(pid));
+            setpgid(pid1, getpgid(pid1));
 
             /** 0: wait for any child process whose group id is equal to that of the calling process */
-            if ((pid = waitpid(0, &status, WUNTRACED)))
+            if ((pid1 = waitpid(0, &status, WUNTRACED)))
             {
-                if (WIFEXITED(status))
-                    printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
+                if (WIFEXITED(status)) {
+//                    printf("[process %d exited with code %d]\n", pid1, WEXITSTATUS(status));                // DEBUG ONLY
+                }
             }
         }
 
         /** -1: wait for any child process */
-        if ((pid = waitpid(-1, &status, WNOHANG)) > 0)
+        if ((pid1 = waitpid(-1, &status, WNOHANG)) > 0)
         {
-            if (WIFEXITED(status))
-                printf("[process %d exited with code %d]\n", pid, WEXITSTATUS(status));
+            if (WIFEXITED(status)) {
+//                printf("[process %d exited with code %d]\n", pid1, WEXITSTATUS(status));                    // DEBUG ONLY
+            }
         }
 
     }
 
-    if (REDIRECT_IN_DETECTED) {
-        close_fd(&IN_FD);
-        dup2(stdin_backup, STDIN_FILENO);
-        REDIRECT_IN_DETECTED = 0;
-    }
-
-    if (REDIRECT_OUT_TRUNC_DETECTED) {
-        close_fd(&OUT_FD);
-        dup2(stdout_backup, STDOUT_FILENO);
-        REDIRECT_OUT_TRUNC_DETECTED = 0;
-    }
-
-    if (REDIRECT_OUT_APPEND_DETECTED) {
-        close_fd(&OUT_FD);
-        dup2(stdout_backup, STDOUT_FILENO);
-        REDIRECT_OUT_APPEND_DETECTED = 0;
-    }
+    disable_redirects(&stdin_backup, &stdout_backup);
 
 }
 
@@ -319,11 +340,30 @@ void expand_home_path(char ** myargv, const size_t * myargc)
     }
 }
 
+
+size_t strip_pipes_myargv(char** myargv, size_t * myargc, char *** tail_myargv, size_t * tail_argc)
+{
+    size_t position = 0;
+    while ((strip_myargv(myargv, myargc, PIPE_SYMBOL)))
+    {
+        *tail_myargv = &myargv[*myargc + 1];
+
+        position = *myargc + 1;
+        while(myargv[position]) {
+//            printf("%s\n", myargv[position++]);
+            position++;
+        }
+        *tail_argc = position - 1 - *myargc;
+    }
+
+    return position;
+}
+
 /** Function for parsing the redirect characters. Returns the position of the
  * first matched char * of 1 character from the end of myargv. Sets PATH_TO_FILE
  * to the value of the next token in the myargv array after the matched character (if it exists).
  * It replaces the found character with \0 and decrements myargc accordingly. */
-ssize_t strip_myargv(char ** myargv, size_t * myargc, const char * search_item)
+size_t strip_myargv(char ** myargv, size_t * myargc, const char * search_item)
 {
     for (int i = (int) (*myargc - 1); i > 0; i--)
     {
@@ -372,6 +412,54 @@ void parse_redirects(char ** myargv, size_t * myargc)
     }
 }
 
+void enable_redirects()
+{
+    enable_input_redirect();
+    enable_output_redirects();
+}
+
+void enable_input_redirect()
+{
+    if (REDIRECT_IN_DETECTED) {
+        IN_FD = open_to_read(INFILE_PATH);
+        dup2(IN_FD, STDIN_FILENO);
+    }
+}
+
+void enable_output_redirects()
+{
+    if (REDIRECT_OUT_TRUNC_DETECTED) {
+        OUT_FD = open_to_trunc_write(OUTFILE_PATH);
+        dup2(OUT_FD, STDOUT_FILENO);
+    }
+
+    if (REDIRECT_OUT_APPEND_DETECTED) {
+        OUT_FD = open_to_append_write(OUTFILE_PATH);
+        dup2(OUT_FD, STDOUT_FILENO);
+    }
+}
+
+void disable_redirects(const int * stdin_backup, const int * stdout_backup)
+{
+    if (REDIRECT_IN_DETECTED) {
+        close_fd(&IN_FD);
+        dup2(*stdin_backup, STDIN_FILENO);
+        REDIRECT_IN_DETECTED = 0;
+    }
+
+    if (REDIRECT_OUT_TRUNC_DETECTED) {
+        close_fd(&OUT_FD);
+        dup2(*stdout_backup, STDOUT_FILENO);
+        REDIRECT_OUT_TRUNC_DETECTED = 0;
+    }
+
+    if (REDIRECT_OUT_APPEND_DETECTED) {
+        close_fd(&OUT_FD);
+        dup2(*stdout_backup, STDOUT_FILENO);
+        REDIRECT_OUT_APPEND_DETECTED = 0;
+    }
+}
+
 void builtin_cd(char ** myargv, const size_t * myargc)
 {
     CURRENT_WORKING_DIRECTORY = getcwd(CURRENT_WORKING_DIRECTORY, PATH_MAX);
@@ -404,9 +492,17 @@ void builtin_cd(char ** myargv, const size_t * myargc)
 
 void builtin_pwd()
 {
+    int stdin_backup = dup(STDIN_FILENO);
+    int stdout_backup = dup(STDOUT_FILENO);
+    enable_redirects();
+
     CURRENT_WORKING_DIRECTORY = getcwd(CURRENT_WORKING_DIRECTORY, PATH_MAX);
-    ssize_t bytes_written = printf("%s\n", CURRENT_WORKING_DIRECTORY);
+    ssize_t bytes_written = write(STDOUT_FILENO, CURRENT_WORKING_DIRECTORY, strlen(CURRENT_WORKING_DIRECTORY));
     check_for_errors_gracefully(bytes_written, "Write error...");
+    bytes_written = write(STDOUT_FILENO, "\n", 1);
+    check_for_errors_gracefully(bytes_written, "Write error...");
+
+    disable_redirects(&stdin_backup, &stdout_backup);
 }
 
 size_t tokenize_input(char * buf, char * delimiter, char ** myargv, size_t myargc)
