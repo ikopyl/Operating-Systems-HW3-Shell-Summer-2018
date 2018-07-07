@@ -84,6 +84,7 @@ void check_for_errors_and_terminate(ssize_t, const char *);
 void check_for_errors_gracefully(ssize_t, const char *);
 
 void expand_home_directory_in_path(char **, const size_t *);
+char * collapse_home_path(char *);
 char * generate_prompt(char *);
 
 char is_background_process(char **, size_t *);
@@ -342,13 +343,33 @@ void expand_home_directory_in_path(char ** myargv, const size_t * myargc)
     }
 }
 
+char * collapse_home_path(char * path)
+{
+    size_t home_len = strlen(HOME_PATH);
+    char * extract = calloc(home_len, sizeof(char));
+
+    memcpy(extract, path, home_len);
+
+    if (strcmp(extract, HOME_PATH) == 0) {
+        path = path + home_len - 1;
+        path[0] = '~';
+    }
+
+    return path;
+}
+
 char * generate_prompt(char * path)
 {
+    path = collapse_home_path(path);
     char * new_prompt = calloc(PATH_MAX, sizeof(char));
-    new_prompt[0] = '~';
 
-    memcpy(new_prompt + 1, path + strlen(HOME_PATH), strlen(path) - strlen(HOME_PATH));
-    new_prompt = strcat(new_prompt, " $ \0");
+    char * intro = "msh ";
+    char * outro = " $ \0";
+
+    memcpy(new_prompt, intro, strlen(intro));
+    new_prompt = strcat(new_prompt, path);
+
+    new_prompt = strcat(new_prompt, outro);
 
     return new_prompt;
 }
