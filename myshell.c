@@ -25,11 +25,11 @@
 #define BUILTIN_PWD "pwd"
 #define BUILTIN_EXIT "exit"
 
+#define PIPE_SYMBOL "|"
 #define REDIRECT_IN_SYMBOL "<"
 #define REDIRECT_OUT_TRUNC_SYMBOL ">"
 #define REDIRECT_OUT_APPEND_SYMBOL ">>"
 #define BACKGROUND_PROCESS_SYMBOL "&"
-#define PIPE_SYMBOL "|"
 
 #define HOME_SHORTCUT "~"
 #define OLDPWD_SHORTCUT "-"
@@ -38,14 +38,7 @@
 #define ENV_VAR_OLDPWD "OLDPWD"
 #define ENV_VAR_CHAR_RECOGNIZER '$'     /** if a token in input string starts with '$', it will be treated as an environment variable */
 
-#define HOMESIZE sizeof(HOME_SHORTCUT)
-
-#define PROMPT "myShell >> "            /** shell prompt */
-#define PROMPTSIZE sizeof(PROMPT)       /** size of shell prompt */
-
-
-/** initial number of tokens in myargv, but the value will double after each realloc() */
-#define ARGVMAX 32
+#define ARGVMAX 32                      /** initial number of tokens in myargv, but the value will double after each realloc() */
 
 static size_t MAX_ITEMS_ALLOWED;
 static char * CWD;
