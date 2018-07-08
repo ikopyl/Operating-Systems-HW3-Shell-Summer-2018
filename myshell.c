@@ -149,7 +149,6 @@ int repl()
         if (eol == 0)
             continue;
 
-//        myargv[myargc] = '\0';
         myargv[myargc] = NULL;
         BACKGROUND_PROCESS = is_background_process(myargv, &myargc);
 
@@ -401,7 +400,6 @@ size_t strip_myargv(char ** myargv, size_t * myargc, const char * search_item)
             if (*myargc - i > 1) {
                 PATH_TO_FILE = myargv[i+1];
             }
-//            myargv[i] = '\0';
             myargv[i] = NULL;
             *myargc = (size_t) i;
 
@@ -414,7 +412,6 @@ size_t strip_myargv(char ** myargv, size_t * myargc, const char * search_item)
 char is_background_process(char ** myargv, size_t *myargc)
 {
     if (strcmp(myargv[*myargc - 1], BACKGROUND_PROCESS_SYMBOL) == 0) {
-//        myargv[*myargc - 1] = '\0';
         myargv[*myargc - 1] = NULL;
         *myargc -= 1;
         return 1;
