@@ -99,7 +99,7 @@ int open_to_read(const char *);
 int open_to_append_write(const char *);
 int open_to_trunc_write(const char *);
 
-void close_fd(int *);
+void close_fd(const int *);
 
 int main(int* argc, char** argv)
 {
@@ -196,7 +196,7 @@ int open_to_trunc_write(const char * path)
     return fd;
 }
 
-void close_fd(int * fd)
+void close_fd(const int * fd)
 {
     check_for_errors_gracefully(close(*fd), "Failed to close the file descriptor...");
 }
@@ -392,7 +392,7 @@ size_t strip_pipes_myargv(char** myargv, size_t * myargc, char *** tail_myargv, 
  * It replaces the found character with \0 and decrements myargc accordingly. */
 size_t strip_myargv(char ** myargv, size_t * myargc, const char * search_item)
 {
-    for (int i = (int) (*myargc - 1); i > 0; i--)
+    for (size_t i = *myargc - 1; i > 0; i--)
     {
         if (strcmp((const char *) myargv[i], search_item) == 0)
         {
