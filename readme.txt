@@ -1,8 +1,57 @@
 Student's name : Ilya Kopyl
 Student's ID: 917921711
+Student's Email: ikopyl@mail.sfsu.edu
 
 
-Test cases:
+Build instructions:
+
+Run instructions:
+
+
+## FEATURES SHOWCASE
+
+========================= cd, pwd and exit builtins showcase ==========================
+
+ilya.kopyl@ilyakopyl-ltm csc415-shell-program-ikopyl (dev-ikopyl)$ ./myshell
+
+msh ~/depot/git_home/csc415/homework_assignments/hw3/csc415-shell-program-ikopyl $ cd /usr/local/bin
+
+msh /usr/local/bin $ ls -la | wc -l
+    1306
+
+msh /usr/local/bin $ ls -la | wc -l > ~/a.txt
+
+msh /usr/local/bin $ cat ~/a.txt
+    1306
+
+msh /usr/local/bin $ cd -
+
+msh ~/depot/git_home/csc415/homework_assignments/hw3/csc415-shell-program-ikopyl $ pwd
+/Users/ilya.kopyl/depot/git_home/csc415/homework_assignments/hw3/csc415-shell-program-ikopyl
+
+msh ~/depot/git_home/csc415/homework_assignments/hw3/csc415-shell-program-ikopyl $ sudo su
+
+root@ilyakopyl-ltm /Users/ilya.kopyl/depot/git_home/csc415/homework_assignments/hw3/csc415-shell-program-ikopyl$ cd ~
+
+root@ilyakopyl-ltm ~$ pwd
+/var/root
+
+root@ilyakopyl-ltm ~$ cd -
+/Users/ilya.kopyl/depot/git_home/csc415/homework_assignments/hw3/csc415-shell-program-ikopyl
+
+root@ilyakopyl-ltm /Users/ilya.kopyl/depot/git_home/csc415/homework_assignments/hw3/csc415-shell-program-ikopyl$ exit
+exit
+
+msh ~/depot/git_home/csc415/homework_assignments/hw3/csc415-shell-program-ikopyl $ cd ~
+
+msh ~ $ pwd
+/Users/ilya.kopyl
+
+msh ~ $ cd -
+msh ~/depot/git_home/csc415/homework_assignments/hw3/csc415-shell-program-ikopyl $ exit
+
+=======================================================================================
+
 
 myShell >> pwd
 /home/csc415/depot/csc415-shell-program-ikopyl/cmake-build-debug
