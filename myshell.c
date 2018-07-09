@@ -81,9 +81,10 @@ char * collapse_home_path(char *);
 char * generate_prompt(char *);
 
 char is_background_process(char **, size_t *);
-void parse_redirects(char **, size_t *);
+//void parse_redirects(char **, size_t *);
+char parse_redirects(char **, size_t *);
 
-void enable_redirects();
+void enable_any_redirects();
 void enable_input_redirect();
 void enable_output_redirects();
 
@@ -155,8 +156,8 @@ int repl()
         /** should precede the redirects parsing*/
         expand_home_directory_in_path(myargv, &myargc);
 
-        /** redirects parsing starts here */
-        parse_redirects(myargv, &myargc);
+//        /** redirects parsing starts here */
+//        parse_redirects(myargv, &myargc);
 
         /** code for handling builtins starts here: */
         if (builtin_found_and_executed(myargv, &myargc))
@@ -253,14 +254,28 @@ void execute_process(char ** myargv, size_t * myargc)
         if (pipe_detected) {
             close(pipe_fd[0]);                          /** closing unused pipe file descriptor */
             dup2(pipe_fd[1], STDOUT_FILENO);            /** connecting output of pid1 to input of pid2 */
-
-            enable_input_redirect();                    /** enable STDIN redirect; should only be applied to the first command */
         }
-        else
+
+
+//        if (pipe_detected) {
+//            close(pipe_fd[0]);                          /** closing unused pipe file descriptor */
+//            dup2(pipe_fd[1], STDOUT_FILENO);            /** connecting output of pid1 to input of pid2 */
+//
+//            enable_input_redirect();                    /** enable STDIN redirect; should only be applied to the first command */
+//        }
+//        else
+//        {
+//            enable_any_redirects();                         /** enable any redirects if available */
+//        }
+
+
+        if (parse_redirects(myargv, myargc))
         {
-            enable_redirects();                         /** enable any redirects if available */
+            if (pipe_detected)
+                enable_input_redirect();
+            else
+                enable_any_redirects();
         }
-
 
         /** moving a background child to another process group */
         if (BACKGROUND_PROCESS)
@@ -281,7 +296,10 @@ void execute_process(char ** myargv, size_t * myargc)
                 close(pipe_fd[1]);                  /** closing the unused pipe file descriptor */
                 dup2(pipe_fd[0], STDIN_FILENO);     /** connecting input of pid2 to output of pid1 */
 
-                enable_output_redirects();          /** enable STDOUT redirects; should only be applied to the last command */
+                if (parse_redirects(tail_myargv, &tail_myargc))
+                    enable_any_redirects();
+
+//                enable_output_redirects();          /** enable STDOUT redirects; should only be applied to the last command */
 
                 execvp(tail_myargv[0], tail_myargv);
                 perror("Execvp of second child failed...");
@@ -419,28 +437,33 @@ char is_background_process(char ** myargv, size_t *myargc)
     return 0;
 }
 
-void parse_redirects(char ** myargv, size_t * myargc)
+char parse_redirects(char ** myargv, size_t * myargc)
 {
+    char redirect_detected = 0;
     if (strip_myargv(myargv, myargc, REDIRECT_OUT_TRUNC_SYMBOL)) {
         REDIRECT_OUT_TRUNC_DETECTED = 1;
         OUTFILE_PATH = PATH_TO_FILE;
         PATH_TO_FILE = NULL;
+        redirect_detected += 1;
     }
 
     if (strip_myargv(myargv, myargc, REDIRECT_OUT_APPEND_SYMBOL)) {
         REDIRECT_OUT_APPEND_DETECTED = 1;
         OUTFILE_PATH = PATH_TO_FILE;
         PATH_TO_FILE = NULL;
+        redirect_detected += 1;
     }
 
     if (strip_myargv(myargv, myargc, REDIRECT_IN_SYMBOL)) {
         REDIRECT_IN_DETECTED = 1;
         INFILE_PATH = PATH_TO_FILE;
         PATH_TO_FILE = NULL;
+        redirect_detected += 1;
     }
+    return redirect_detected;
 }
 
-void enable_redirects()
+void enable_any_redirects()
 {
     enable_input_redirect();
     enable_output_redirects();
@@ -522,7 +545,7 @@ void builtin_pwd()
 {
     int stdin_backup = dup(STDIN_FILENO);
     int stdout_backup = dup(STDOUT_FILENO);
-    enable_redirects();
+    enable_any_redirects();
 
     CWD = getcwd(CWD, PATH_MAX);
     ssize_t bytes_written = write(STDOUT_FILENO, CWD, strlen(CWD));
