@@ -215,7 +215,6 @@ char builtin_found_and_executed(char **myargv, size_t * myargc)
 
 
     if ((strcmp(myargv[0], BUILTIN_PWD) == 0) && *myargc == 1) {
-//    if (strcmp(myargv[0], BUILTIN_PWD) == 0) {
         if (*myargc == 1)
         {
             builtin_pwd();
