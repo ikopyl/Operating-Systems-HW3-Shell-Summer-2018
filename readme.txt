@@ -237,6 +237,26 @@ msh ~/depot/csc415-shell-program-ikopyl $ ls -la | wc         -l
 
 
 
+csc415@csc415-vb csc415-shell-program-ikopyl (dev-ikopyl)*$ pwd
+/home/csc415/depot/csc415-shell-program-ikopyl
+
+csc415@csc415-vb csc415-shell-program-ikopyl (dev-ikopyl)*$ pwd > ~/a.txt
+
+csc415@csc415-vb csc415-shell-program-ikopyl (dev-ikopyl)*$ pwd >> ~/a.txt
+
+csc415@csc415-vb csc415-shell-program-ikopyl (dev-ikopyl)*$ cat ~/a.txt
+/home/csc415/depot/csc415-shell-program-ikopyl
+/home/csc415/depot/csc415-shell-program-ikopyl
+
+csc415@csc415-vb csc415-shell-program-ikopyl (dev-ikopyl)*$ pwd > ~/a.txt ~/b.txt
+
+csc415@csc415-vb csc415-shell-program-ikopyl (dev-ikopyl)*$ cat ~/a.txt
+/home/csc415/depot/csc415-shell-program-ikopyl
+
+csc415@csc415-vb csc415-shell-program-ikopyl (dev-ikopyl)*$ cat ~/b.txt
+cat: /home/csc415/b.txt: No such file or directory
+
+
 
 msh ~/depot/csc415-shell-program-ikopyl $ sudo su
 [sudo] password for csc415:

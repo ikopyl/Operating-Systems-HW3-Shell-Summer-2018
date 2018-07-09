@@ -93,7 +93,7 @@ void disable_redirects(const int *, const int *);
 void builtin_cd(char **, const size_t *);
 void builtin_pwd();
 
-char builtin_found_and_executed(char **, const size_t *);
+char builtin_found_and_executed(char **, size_t *);
 void execute_process(char **, size_t *);
 
 int open_to_read(const char *);
@@ -203,7 +203,7 @@ void close_fd(const int * fd)
     check_for_errors_gracefully(close(*fd), "Failed to close the file descriptor...");
 }
 
-char builtin_found_and_executed(char **myargv, const size_t * myargc)
+char builtin_found_and_executed(char **myargv, size_t * myargc)
 {
     if (*myargc == 1 && strcmp(myargv[0], BUILTIN_EXIT) == 0)
         exit(EXIT_SUCCESS);
@@ -213,8 +213,24 @@ char builtin_found_and_executed(char **myargv, const size_t * myargc)
         return 1;
     }
 
-    if (strcmp(myargv[0], BUILTIN_PWD) == 0) {
-        builtin_pwd();
+
+    if ((strcmp(myargv[0], BUILTIN_PWD) == 0) && *myargc == 1) {
+//    if (strcmp(myargv[0], BUILTIN_PWD) == 0) {
+        if (*myargc == 1)
+        {
+            builtin_pwd();
+        }
+        else if (*myargc > 2)
+        {
+            int stdin_backup = dup(STDIN_FILENO);
+            int stdout_backup = dup(STDOUT_FILENO);
+
+            if (parse_redirects(myargv, (size_t *) *myargc)) {
+                enable_output_redirects();
+                builtin_pwd();
+                disable_redirects(&stdin_backup, &stdout_backup);
+            }
+        }
         return 1;
     }
 
@@ -530,9 +546,10 @@ void builtin_cd(char ** myargv, const size_t * myargc)
 
 void builtin_pwd()
 {
-    int stdin_backup = dup(STDIN_FILENO);
-    int stdout_backup = dup(STDOUT_FILENO);
-    enable_any_redirects();
+//    int stdin_backup = dup(STDIN_FILENO);
+//    int stdout_backup = dup(STDOUT_FILENO);
+//    enable_output_redirects();
+//    enable_any_redirects();
 
     CWD = getcwd(CWD, PATH_MAX);
     ssize_t bytes_written = write(STDOUT_FILENO, CWD, strlen(CWD));
@@ -540,7 +557,7 @@ void builtin_pwd()
     bytes_written = write(STDOUT_FILENO, "\n", 1);
     check_for_errors_gracefully(bytes_written, "Write error...");
 
-    disable_redirects(&stdin_backup, &stdout_backup);
+//    disable_redirects(&stdin_backup, &stdout_backup);
 }
 
 size_t tokenize_input(char * buf, char * delimiter, char ** myargv, size_t myargc)
