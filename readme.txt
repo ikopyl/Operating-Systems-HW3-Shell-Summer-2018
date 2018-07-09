@@ -178,6 +178,10 @@ clean:
 	rm myshell
 
 
+msh ~/depot/csc415-shell-program-ikopyl $ grep shell < ~/a.txt >> ~/a.txt
+grep: input file ‘(standard input)’ is also the output
+
+
 
 =======================================================================================
         5. Execute multiple commands connected by a signle shell pipe.
@@ -235,6 +239,26 @@ msh ~/depot/csc415-shell-program-ikopyl $ pwd
 msh ~/depot/csc415-shell-program-ikopyl $ ls -la | wc         -l
 15
 
+
+
+csc415@csc415-vb csc415-shell-program-ikopyl (dev-ikopyl)*$ pwd
+/home/csc415/depot/csc415-shell-program-ikopyl
+
+csc415@csc415-vb csc415-shell-program-ikopyl (dev-ikopyl)*$ pwd > ~/a.txt
+
+csc415@csc415-vb csc415-shell-program-ikopyl (dev-ikopyl)*$ pwd >> ~/a.txt
+
+csc415@csc415-vb csc415-shell-program-ikopyl (dev-ikopyl)*$ cat ~/a.txt
+/home/csc415/depot/csc415-shell-program-ikopyl
+/home/csc415/depot/csc415-shell-program-ikopyl
+
+csc415@csc415-vb csc415-shell-program-ikopyl (dev-ikopyl)*$ pwd > ~/a.txt ~/b.txt
+
+csc415@csc415-vb csc415-shell-program-ikopyl (dev-ikopyl)*$ cat ~/a.txt
+/home/csc415/depot/csc415-shell-program-ikopyl
+
+csc415@csc415-vb csc415-shell-program-ikopyl (dev-ikopyl)*$ cat ~/b.txt
+cat: /home/csc415/b.txt: No such file or directory
 
 
 
