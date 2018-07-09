@@ -81,7 +81,6 @@ char * collapse_home_path(char *);
 char * generate_prompt(char *);
 
 char is_background_process(char **, size_t *);
-//void parse_redirects(char **, size_t *);
 char parse_redirects(char **, size_t *);
 
 void enable_any_redirects();
@@ -155,9 +154,6 @@ int repl()
 
         /** should precede the redirects parsing*/
         expand_home_directory_in_path(myargv, &myargc);
-
-//        /** redirects parsing starts here */
-//        parse_redirects(myargv, &myargc);
 
         /** code for handling builtins starts here: */
         if (builtin_found_and_executed(myargv, &myargc))
@@ -545,18 +541,11 @@ void builtin_cd(char ** myargv, const size_t * myargc)
 
 void builtin_pwd()
 {
-//    int stdin_backup = dup(STDIN_FILENO);
-//    int stdout_backup = dup(STDOUT_FILENO);
-//    enable_output_redirects();
-//    enable_any_redirects();
-
     CWD = getcwd(CWD, PATH_MAX);
     ssize_t bytes_written = write(STDOUT_FILENO, CWD, strlen(CWD));
     check_for_errors_gracefully(bytes_written, "Write error...");
     bytes_written = write(STDOUT_FILENO, "\n", 1);
     check_for_errors_gracefully(bytes_written, "Write error...");
-
-//    disable_redirects(&stdin_backup, &stdout_backup);
 }
 
 size_t tokenize_input(char * buf, char * delimiter, char ** myargv, size_t myargc)

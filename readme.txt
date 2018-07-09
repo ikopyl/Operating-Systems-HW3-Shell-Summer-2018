@@ -178,6 +178,10 @@ clean:
 	rm myshell
 
 
+msh ~/depot/csc415-shell-program-ikopyl $ grep shell < ~/a.txt >> ~/a.txt
+grep: input file ‘(standard input)’ is also the output
+
+
 
 =======================================================================================
         5. Execute multiple commands connected by a signle shell pipe.
