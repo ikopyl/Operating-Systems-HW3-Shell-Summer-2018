@@ -257,18 +257,6 @@ void execute_process(char ** myargv, size_t * myargc)
         }
 
 
-//        if (pipe_detected) {
-//            close(pipe_fd[0]);                          /** closing unused pipe file descriptor */
-//            dup2(pipe_fd[1], STDOUT_FILENO);            /** connecting output of pid1 to input of pid2 */
-//
-//            enable_input_redirect();                    /** enable STDIN redirect; should only be applied to the first command */
-//        }
-//        else
-//        {
-//            enable_any_redirects();                         /** enable any redirects if available */
-//        }
-
-
         if (parse_redirects(myargv, myargc))
         {
             if (pipe_detected)
@@ -297,9 +285,8 @@ void execute_process(char ** myargv, size_t * myargc)
                 dup2(pipe_fd[0], STDIN_FILENO);     /** connecting input of pid2 to output of pid1 */
 
                 if (parse_redirects(tail_myargv, &tail_myargc))
-                    enable_any_redirects();
+                    enable_output_redirects();      /** enable STDOUT redirects; should only be applied to the last command */
 
-//                enable_output_redirects();          /** enable STDOUT redirects; should only be applied to the last command */
 
                 execvp(tail_myargv[0], tail_myargv);
                 perror("Execvp of second child failed...");
