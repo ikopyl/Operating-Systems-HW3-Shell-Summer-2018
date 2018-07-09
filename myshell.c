@@ -25,11 +25,11 @@
 #define BUILTIN_PWD "pwd"
 #define BUILTIN_EXIT "exit"
 
+#define PIPE_SYMBOL "|"
 #define REDIRECT_IN_SYMBOL "<"
 #define REDIRECT_OUT_TRUNC_SYMBOL ">"
 #define REDIRECT_OUT_APPEND_SYMBOL ">>"
 #define BACKGROUND_PROCESS_SYMBOL "&"
-#define PIPE_SYMBOL "|"
 
 #define HOME_SHORTCUT "~"
 #define OLDPWD_SHORTCUT "-"
@@ -38,14 +38,7 @@
 #define ENV_VAR_OLDPWD "OLDPWD"
 #define ENV_VAR_CHAR_RECOGNIZER '$'     /** if a token in input string starts with '$', it will be treated as an environment variable */
 
-#define HOMESIZE sizeof(HOME_SHORTCUT)
-
-#define PROMPT "myShell >> "            /** shell prompt */
-#define PROMPTSIZE sizeof(PROMPT)       /** size of shell prompt */
-
-
-/** initial number of tokens in myargv, but the value will double after each realloc() */
-#define ARGVMAX 32
+#define ARGVMAX 32                      /** initial number of tokens in myargv, but the value will double after each realloc() */
 
 static size_t MAX_ITEMS_ALLOWED;
 static char * CWD;
@@ -88,9 +81,10 @@ char * collapse_home_path(char *);
 char * generate_prompt(char *);
 
 char is_background_process(char **, size_t *);
-void parse_redirects(char **, size_t *);
+//void parse_redirects(char **, size_t *);
+char parse_redirects(char **, size_t *);
 
-void enable_redirects();
+void enable_any_redirects();
 void enable_input_redirect();
 void enable_output_redirects();
 
@@ -106,9 +100,10 @@ int open_to_read(const char *);
 int open_to_append_write(const char *);
 int open_to_trunc_write(const char *);
 
-void close_fd(int *);
+void close_fd(const int *);
 
-int main(int* argc, char** argv)
+//int main(int* argc, char** argv)                      /** this doesn't compile on Mac */
+int main(int argc, char** argv)                         /** but this does */
 {
     return repl();
 }
@@ -155,14 +150,14 @@ int repl()
         if (eol == 0)
             continue;
 
-        myargv[myargc] = '\0';
+        myargv[myargc] = NULL;
         BACKGROUND_PROCESS = is_background_process(myargv, &myargc);
 
         /** should precede the redirects parsing*/
         expand_home_directory_in_path(myargv, &myargc);
 
-        /** redirects parsing starts here */
-        parse_redirects(myargv, &myargc);
+//        /** redirects parsing starts here */
+//        parse_redirects(myargv, &myargc);
 
         /** code for handling builtins starts here: */
         if (builtin_found_and_executed(myargv, &myargc))
@@ -203,7 +198,7 @@ int open_to_trunc_write(const char * path)
     return fd;
 }
 
-void close_fd(int * fd)
+void close_fd(const int * fd)
 {
     check_for_errors_gracefully(close(*fd), "Failed to close the file descriptor...");
 }
@@ -259,14 +254,16 @@ void execute_process(char ** myargv, size_t * myargc)
         if (pipe_detected) {
             close(pipe_fd[0]);                          /** closing unused pipe file descriptor */
             dup2(pipe_fd[1], STDOUT_FILENO);            /** connecting output of pid1 to input of pid2 */
-
-            enable_input_redirect();                    /** enable STDIN redirect; should only be applied to the first command */
         }
-        else
+
+
+        if (parse_redirects(myargv, myargc))
         {
-            enable_redirects();                         /** enable any redirects if available */
+            if (pipe_detected)
+                enable_input_redirect();
+            else
+                enable_any_redirects();
         }
-
 
         /** moving a background child to another process group */
         if (BACKGROUND_PROCESS)
@@ -287,7 +284,9 @@ void execute_process(char ** myargv, size_t * myargc)
                 close(pipe_fd[1]);                  /** closing the unused pipe file descriptor */
                 dup2(pipe_fd[0], STDIN_FILENO);     /** connecting input of pid2 to output of pid1 */
 
-                enable_output_redirects();          /** enable STDOUT redirects; should only be applied to the last command */
+                if (parse_redirects(tail_myargv, &tail_myargc))
+                    enable_output_redirects();      /** enable STDOUT redirects; should only be applied to the last command */
+
 
                 execvp(tail_myargv[0], tail_myargv);
                 perror("Execvp of second child failed...");
@@ -399,14 +398,14 @@ size_t strip_pipes_myargv(char** myargv, size_t * myargc, char *** tail_myargv, 
  * It replaces the found character with \0 and decrements myargc accordingly. */
 size_t strip_myargv(char ** myargv, size_t * myargc, const char * search_item)
 {
-    for (int i = (int) (*myargc - 1); i > 0; i--)
+    for (size_t i = *myargc - 1; i > 0; i--)
     {
         if (strcmp((const char *) myargv[i], search_item) == 0)
         {
             if (*myargc - i > 1) {
                 PATH_TO_FILE = myargv[i+1];
             }
-            myargv[i] = '\0';
+            myargv[i] = NULL;
             *myargc = (size_t) i;
 
             return i;
@@ -418,35 +417,40 @@ size_t strip_myargv(char ** myargv, size_t * myargc, const char * search_item)
 char is_background_process(char ** myargv, size_t *myargc)
 {
     if (strcmp(myargv[*myargc - 1], BACKGROUND_PROCESS_SYMBOL) == 0) {
-        myargv[*myargc - 1] = '\0';
+        myargv[*myargc - 1] = NULL;
         *myargc -= 1;
         return 1;
     }
     return 0;
 }
 
-void parse_redirects(char ** myargv, size_t * myargc)
+char parse_redirects(char ** myargv, size_t * myargc)
 {
+    char redirect_detected = 0;
     if (strip_myargv(myargv, myargc, REDIRECT_OUT_TRUNC_SYMBOL)) {
         REDIRECT_OUT_TRUNC_DETECTED = 1;
         OUTFILE_PATH = PATH_TO_FILE;
         PATH_TO_FILE = NULL;
+        redirect_detected += 1;
     }
 
     if (strip_myargv(myargv, myargc, REDIRECT_OUT_APPEND_SYMBOL)) {
         REDIRECT_OUT_APPEND_DETECTED = 1;
         OUTFILE_PATH = PATH_TO_FILE;
         PATH_TO_FILE = NULL;
+        redirect_detected += 1;
     }
 
     if (strip_myargv(myargv, myargc, REDIRECT_IN_SYMBOL)) {
         REDIRECT_IN_DETECTED = 1;
         INFILE_PATH = PATH_TO_FILE;
         PATH_TO_FILE = NULL;
+        redirect_detected += 1;
     }
+    return redirect_detected;
 }
 
-void enable_redirects()
+void enable_any_redirects()
 {
     enable_input_redirect();
     enable_output_redirects();
@@ -528,7 +532,7 @@ void builtin_pwd()
 {
     int stdin_backup = dup(STDIN_FILENO);
     int stdout_backup = dup(STDOUT_FILENO);
-    enable_redirects();
+    enable_any_redirects();
 
     CWD = getcwd(CWD, PATH_MAX);
     ssize_t bytes_written = write(STDOUT_FILENO, CWD, strlen(CWD));
